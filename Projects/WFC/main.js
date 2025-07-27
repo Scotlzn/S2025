@@ -117,7 +117,7 @@ class Main {
                     let tile = this.grid[x][y];
                     let entropy = tile.options.length;
                     if (entropy > 0) {
-                        this.ctx.fillText(entropy.toString(), x * this.TILE_SIZE + this.HALF_TILE_SIZE, y * this.TILE_SIZE + this.HALF_TILE_SIZE);
+                        this.ctx.fillText(tile.options.toString(), x * this.TILE_SIZE + this.HALF_TILE_SIZE, y * this.TILE_SIZE + this.HALF_TILE_SIZE);
                     }
                 }
             }
@@ -183,6 +183,17 @@ class Main {
     run(image_data) {
         this.images = image_data;
         this.initial_tile();
+        this.complete_grid();
+        this.render();
+    }
+
+    complete_grid() {
+        if (this.complete) {
+            this.clear();
+        }
+        while (!this.complete) {
+            this.step();
+        }
         this.render();
     }
 

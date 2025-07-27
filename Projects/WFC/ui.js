@@ -28,13 +28,7 @@ export default class UIManager {
         }
 
         this.complete_button.onclick = () => {
-            if (main.complete) {
-                main.clear();
-            }
-            while (!main.complete) {
-                main.step();
-            }
-            main.render();
+            main.complete_grid();
         }
 
         this.entropy_button.onclick = () => {
