@@ -16,13 +16,13 @@ export function create_array_2D(size, number_of_tiles) {
     return output;
 }
 
-export function load_assets(func) {
+export function load_assets(main) {
     const images = [];
     let loaded_images = 0;
 
     for (let i = 0; i < 5; i++) {
         const img = new Image();
-        img.src = `./assets/${i}.png`;
+        img.src = `./assets/pipes/${i}.png`;
 
         img.onload = function() {
             images[i] = img;
@@ -30,7 +30,7 @@ export function load_assets(func) {
 
             if (loaded_images == 5) {
                 // Start program when images have loaded
-                func(images);
+                main.run(images);
             }
         };
 
