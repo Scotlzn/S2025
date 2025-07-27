@@ -1,6 +1,20 @@
+import Tile from "./tile.js";
+
 export function get_random_int_in_range(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+export function create_array_2D(size, number_of_tiles) {
+    let output = [];
+    for (let x = 0; x < size; x++) {
+        let new_line = [];
+        for (let y = 0; y < size; y++) {
+            new_line.push(new Tile([x, y], number_of_tiles));
+        }
+        output.push(new_line);
     }
+    return output;
+}
 
 export function load_assets(func) {
     const images = [];
