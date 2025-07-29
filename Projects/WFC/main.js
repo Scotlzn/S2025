@@ -1,43 +1,51 @@
-import { load_assets, get_random_int_in_range, create_array_2D } from "./support.js";
+import { 
+    load_assets, get_random_int_in_range, create_array_2D, find_all_possible_options, load_all_data
+} from "./support.js";
 import BacktrackingManager from "./backtracking.js";
 import UIManager from "./ui.js";
 
 class Main {
 
-    constructor() {
+    constructor(tile_data, image_data) {
 
         this.canvas = document.getElementById("canvas1");
         this.ctx = this.canvas.getContext('2d');
+ 
+        this.GRID_SIZE = parseInt(document.getElementById("grid_input").value, 10);
+        this.IMG_SIZE = tile_data["image_size"]; // In pixels (56)
 
-        this.GRID_SIZE = 30;
-        this.IMG_SIZE = 3; // In pixels
+        // Avoids white lines between tiles 
+        let nice_scale = Math.round(800 / this.GRID_SIZE) * this.GRID_SIZE;
+        this.canvas.width = nice_scale;
+        this.canvas.height = nice_scale;
 
         this.WIDTH = this.canvas.width;
         this.HEIGHT = this.canvas.height;
         this.TILE_SIZE = this.WIDTH / this.GRID_SIZE;
         this.HALF_TILE_SIZE = this.TILE_SIZE * 0.5;
-        this.SCALE = this.TILE_SIZE / this.IMG_SIZE;
+        this.SCALE = (this.TILE_SIZE / this.IMG_SIZE);
         this.DIRECTIONS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 
-        // Up, right, down, left
-        this.OPTIONS = [
-            [[1, 0], [2, 0], [3, 0], [4, 0]], // TILE 0
-            [[2, 3, 4], [1, 3, 4], [3, 0], [1, 2, 3]], // TILE 1
-            [[2, 3, 4], [1, 3, 4], [1, 2, 4], [4, 0]], // TILE 2
-            [[1, 0], [1, 3, 4], [1, 2, 4], [1, 2, 3]], // TILE 3
-            [[2, 3, 4], [2, 0], [1, 2, 4], [1, 2, 3]] // TILE 4
-        ];
-        this.TILES = this.OPTIONS.length;
+        // ALWAYS READ EVERYTHING CLOCKWISE
+        this.SOCKETS = tile_data["sockets"];
+
+        this.ROTATION_OFFSET = tile_data["rotation_offset"]; // The index/tile where rotated images start
+        this.TILES = this.SOCKETS.length;
+        this.OPTIONS = find_all_possible_options(this.SOCKETS, this.TILES, this.ROTATION_OFFSET);
+        this.TOTAL_TILES = this.OPTIONS.length;
+        // console.log(this.OPTIONS);
+
         this.START = [2, 2];
 
         this.backtracking_manager = new BacktrackingManager(this);
         this.UI_Manager = new UIManager(this);
 
-        this.images = [];
-        this.grid = create_array_2D(this.GRID_SIZE, this.TILES);
+        this.images = image_data;
+        this.grid = create_array_2D(this.GRID_SIZE, this.TOTAL_TILES);
         this.tile_history = [];
         this.complete = false;
         this.error_found = false;
+        this.steps = 0;
 
         this.playing = false;
         this.intervalId = 0;
@@ -45,8 +53,8 @@ class Main {
         this.show_entropy = false;
 
         this.ctx.imageSmoothingEnabled = false;
-        // this.ctx.font = '40px "Press Start 2P"';
-        this.ctx.font = '30px "Press Start 2P"';
+        // this.ctx.font = '30px "Press Start 2P"';
+        this.ctx.font = '20px "Press Start 2P"';
         this.ctx.fillStyle = 'black';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
@@ -59,7 +67,6 @@ class Main {
     }
 
     update_entropy(x, y, tile_id) {
-        let options_data = this.OPTIONS[tile_id];
         let neighbour_options = [];
         this.DIRECTIONS.forEach((direction, index) => {
             let position = [x,  y];
@@ -80,7 +87,7 @@ class Main {
 
             // Remove options that are not in new options
             neighbour_options.push(tile.options);
-            let new_options = options_data[index];
+            let new_options = this.OPTIONS[tile_id][index];
             let updated_options = this.update_options(tile.options, new_options);
             tile.options = updated_options;
 
@@ -117,7 +124,7 @@ class Main {
                     let tile = this.grid[x][y];
                     let entropy = tile.options.length;
                     if (entropy > 0) {
-                        this.ctx.fillText(tile.options.toString(), x * this.TILE_SIZE + this.HALF_TILE_SIZE, y * this.TILE_SIZE + this.HALF_TILE_SIZE);
+                        this.ctx.fillText(entropy.toString(), x * this.TILE_SIZE + this.HALF_TILE_SIZE, y * this.TILE_SIZE + this.HALF_TILE_SIZE);
                     }
                 }
             }
@@ -126,6 +133,17 @@ class Main {
     }
 
     step() {
+        
+        // Fix error where it can get stuck in an endless loop
+        this.steps++;
+        if (this.steps > (this.GRID_SIZE * this.GRID_SIZE * 4)) {
+            this.backtracking_manager.limit += 8;
+            this.steps = 0;
+            // Completly stuck -> just reset
+            if (this.backtracking_manager.limit > 64) this.clear();
+            return;
+        }
+
         // If backtracking is active, step backtracks
         if (this.backtracking_manager.active) {
             this.backtracking_manager.backtrack();
@@ -172,7 +190,7 @@ class Main {
     }
 
     initial_tile() {
-        let new_tile = get_random_int_in_range(0, this.TILES - 1);
+        let new_tile = get_random_int_in_range(0, this.TOTAL_TILES - 1);
         let tile = this.grid[this.START[0]][this.START[1]];
         tile.id = new_tile;
         tile.collapsed = true;
@@ -180,10 +198,9 @@ class Main {
         this.update_entropy(this.START[0], this.START[1], tile.id);
     }
 
-    run(image_data) {
-        this.images = image_data;
+    run() {
+        // console.log(this.images)
         this.initial_tile();
-        this.complete_grid();
         this.render();
     }
 
@@ -198,13 +215,15 @@ class Main {
     }
 
     clear() {
+        this.steps = 0;
         this.complete = false;
         this.error_found = false;
         this.backtracking_manager.active = false;
-        this.backtracking_manager.max_depth = 1;
+        this.backtracking_manager.max_depth = 2;
         this.backtracking_manager.current_depth = 0;
+        this.backtracking_manager.limit = 8;
         this.tile_history = [];
-        this.grid = create_array_2D(this.GRID_SIZE, this.TILES);
+        this.grid = create_array_2D(this.GRID_SIZE, this.TOTAL_TILES);
         this.initial_tile();
     }
 
@@ -221,5 +240,32 @@ class Main {
 }
 
 // ------- Page ONLOAD --------
-var main = new Main();
-load_assets(main);
+var dataset_button = document.getElementById("dataset_button");
+var data = load_all_data();
+var image_data = [];
+var main;
+var dataset = 0;
+load_assets(data, run);
+
+function initialise_main() {
+    main = new Main(data[dataset], image_data[dataset]);
+    main.run();
+}
+
+function run(images) {
+    image_data = images;
+    initialise_main();
+}
+
+// ------- Dataset UI stuff ---------
+const DATASETS = [
+    "Dataset: Circuit",
+    "Dataset: Pipes"
+]
+
+dataset_button.onclick = () => {
+    dataset = (dataset + 1) % DATASETS.length;
+    dataset_button.textContent = DATASETS[dataset];
+    initialise_main();
+    main.render();
+}

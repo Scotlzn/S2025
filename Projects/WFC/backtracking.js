@@ -9,16 +9,16 @@ export default class BacktrackingManager {
     constructor(main) {
         this.main = main;
         this.active = false;
-        this.limit = 32;
-        this.max_depth = 1;
+        this.limit = 8;
+        this.max_depth = 2;
         this.current_depth = 0;
-        this.mode = 0;
+        this.mode = 1;
     }
 
     back() {
         // Cant undo if there is only the starting tile, and stop play or backtracking if active
         if (this.main.tile_history.length < 1) {
-            this.main.terminate_backtracking();
+            this.terminate();
             this.main.pause();
             return;
         }
@@ -56,15 +56,14 @@ export default class BacktrackingManager {
     }
 
     change_max_depth() {
-        // Hardcoded depth limit so it doesn't basically restart the whole thing
-        if (this.max_depth >= this.limit) {
-            this.max_depth = this.limit;
-            return;
-        }
         // Change max depth depending on mode
         if (this.mode == 2) {
             this.max_depth *= 2;
         } else this.max_depth++;
+        // Hardcoded depth limit so it doesn't basically restart the whole thing
+        if (this.max_depth >= this.limit) {
+            this.max_depth = this.limit;
+        }
     }
 
     backtrack() {

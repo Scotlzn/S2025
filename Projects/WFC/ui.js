@@ -23,11 +23,12 @@ export default class UIManager {
 
         this.back_button.onclick = () => {
             if (main.backtracking_manager.active) return;
-            main.back();
+            main.backtracking_manager.back();
             main.render();
         }
 
         this.complete_button.onclick = () => {
+            if (main.steps > 10000) return;
             main.complete_grid();
         }
 
@@ -47,10 +48,11 @@ export default class UIManager {
             if (main.complete && !main.backtracking_manager.active) return;
             main.playing = !main.playing;
             if (main.playing) {
+                const speed = parseInt(document.getElementById("speed_input").value, 10);
                 this.play_button.textContent = 'Pause';
                 main.intervalId = this.main.intervalId = setInterval(() => {
                     this.main.play(); 
-                }, 50);
+                }, speed);
             } else main.pause();
         }
     }
