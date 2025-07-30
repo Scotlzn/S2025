@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Minesweeper</title>
+        <link rel="stylesheet" href="./style.css">
+        <link rel="stylesheet" href="./navbar.css">
+        <script defer src="main.js" type="module"></script>
+    </head>
+    <body>
+        <div class="navbar">
+            <a href="../../index.html">Minesweeper</a>
+            <button id="restart_button">Restart</button>
+            <p id="ui_bombs"></p>
+            <p id="ui_time">Time: 00:00</p>
+            <div class="dropdown">
+                <button class="dropbtn">
+                    <span>
+                        Easy
+                        <i class="fa fa-caret-down"></i>
+                    </span>
+                </button>
+                <div class="dropdown-content" id="dropdown-content">
+                    <button>Easy</button>
+                    <button>Medium</button>
+                    <button>Hard</button>
+                </div>
+            </div> 
+        </div>
+        <div class="canvas_container">
+            <canvas width="800" height="800" id="canvas" oncontextmenu="return false;">Canvas failed to load!</canvas>
+        </div>
+    </body>
+</html>
