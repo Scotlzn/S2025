@@ -9,13 +9,25 @@
         <div class="grid">
             <canvas width="800" height="800" id="canvas" oncontextmenu="return false;">Canvas failed to load!</canvas>
             <div class="grid_buttons">
-                <button id="play_button">Play</button>
-                <button id="step_button">Step</button>
-                <button id="restart_button">Restart</button>
-                <button id="complete_button">Complete</button>
-                <button id="path_button">Show path: ON</button>
-                <button id="set_button">Show sets: ON</button>
-                <button id="cost_button">Show costs: ON</button>
+                <div class="button-group">
+                    <button id="play_button">Play</button>
+                    <button id="step_button">Step</button>
+                    <button id="restart_button">Restart</button>
+                    <button id="complete_button">Complete</button>
+                </div>
+                <div class="button-group">
+                    <button id="maze_toggle_button">Maze: ON</button>
+                    <button id="maze_play_button">Maze play</button>
+                    <button id="maze_step_button">Maze step</button>
+                    <button id="maze_complete_button">Maze complete</button>
+                    <button id="maze_algorithm_button">Maze algorithm: <br>Aldous-Broder</button>
+                </div>
+                <div class="button-group">
+                    <button id="path_button">Show path: ON</button>
+                    <button id="set_button">Show sets: ON</button>
+                    <button id="cost_button">Show costs: OFF</button>
+                    <button id="maze_button">Show maze path: ON</button>
+                </div>
             </div>
         </div>
     </body>

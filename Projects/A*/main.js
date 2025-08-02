@@ -1,4 +1,5 @@
 import { createArray2D, DIRECTION8, getRandomIntInRange, inBounds } from "./support.js";
+import Maze from "./maze.js";
 
 var play_button = document.getElementById("play_button");
 var step_button = document.getElementById("step_button");
@@ -13,7 +14,7 @@ class Main {
         this.canvas = document.getElementById("canvas");
         this.ctx = this.canvas.getContext('2d');
  
-        this.GRID_WIDTH = 20, this.GRID_HEIGHT = 20;
+        this.GRID_WIDTH = 11, this.GRID_HEIGHT = 11;
         this.TILE_SIZE = this.canvas.width / this.GRID_WIDTH;
         this.HALF_TILE_SIZE = this.TILE_SIZE * 0.5;
         
@@ -42,7 +43,7 @@ class Main {
 
         this.show_path = true;
         this.show_set = true;
-        this.show_cost = true;
+        this.show_cost = false;
 
         this.grid = createArray2D(this.GRID_WIDTH, this.GRID_HEIGHT);
         this.open = new Set(); // Nodes to be evaluated
@@ -51,6 +52,9 @@ class Main {
         this.complete = false;
         this.brush = 1;
         this.steps = 0;
+
+        this.maze = new Maze(this);
+        this.maze.generate();
     }
 
     handleMouseMove(event) {
@@ -85,7 +89,10 @@ class Main {
                     this.ctx.fillStyle = 'black';
                     this.ctx.fillRect(x * this.TILE_SIZE, y * this.TILE_SIZE, this.TILE_SIZE, this.TILE_SIZE);
                     continue;
+                } else if (tile.maze) {
+                    this.ctx.fillStyle = "rgba(2, 76, 247, 1)";
                 } else if (isStart || isEnd) {
+                    // continue;
                     this.ctx.fillStyle = "rgb(36,140,176)";
                 } else if (!this.show_set) {
                     continue;
@@ -130,6 +137,7 @@ class Main {
 
                 // Text
                 if (isStart || isEnd) {
+                    continue;
                     this.ctx.fillStyle = "black";
                     this.ctx.font = "bold 50px sans-serif";
                     this.ctx.fillText(isStart ? "A" : "B", centerX, centerY);
@@ -218,6 +226,7 @@ class Main {
     }
 
     place_tile() {
+        if (this.mouse.tileX >= this.GRID_WIDTH || this.mouse.tileY >= this.GRID_HEIGHT) return; 
         let tile = this.grid[this.mouse.tileX][this.mouse.tileY];
         if (tile == undefined) return;
         if (this.complete) return;
@@ -317,6 +326,6 @@ play_button.onclick = function() {
     playing = !playing;
     if (playing) {
         play_button.textContent = 'Pause';
-        intervalId = setInterval(play, 50);
+        intervalId = setInterval(play, 25);
     } else pause();
 }
