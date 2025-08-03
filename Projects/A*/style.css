@@ -24,7 +24,7 @@ button {
     display: flex;
     justify-content: center;
     margin-right: 20px;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     padding: 10px 20px;
     font-size: 16px;
     cursor: pointer;
@@ -32,5 +32,24 @@ button {
 }
 
 .button-group {
-  margin-bottom: 20px; 
+  margin-bottom: 32px; 
+}
+
+.grid_size {
+    margin-top: -25px;
+    display: flex;
+    align-items: center;
+    font-size: 18px;
+    gap: 8px;
+}
+
+.grid_size input {
+    padding: 6px;
+    font-size: 16px;
+    width: 160px;
+    box-sizing: border-box;
+}
+
+.grid_size p {
+    margin: 0 0 6px 0;
 }

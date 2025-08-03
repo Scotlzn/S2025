@@ -8,13 +8,15 @@ var complete_button = document.getElementById("complete_button");
 var path_button = document.getElementById("path_button");
 var set_button = document.getElementById("set_button");
 var cost_button = document.getElementById("cost_button");
+var maze_button = document.getElementById("maze_toggle_button");
+var start_end_button = document.getElementById("start_end_button");
 
 class Main {
-    constructor() {
+    constructor(size) {
         this.canvas = document.getElementById("canvas");
         this.ctx = this.canvas.getContext('2d');
  
-        this.GRID_WIDTH = 11, this.GRID_HEIGHT = 11;
+        this.GRID_WIDTH = size, this.GRID_HEIGHT = size;
         this.TILE_SIZE = this.canvas.width / this.GRID_WIDTH;
         this.HALF_TILE_SIZE = this.TILE_SIZE * 0.5;
         
@@ -37,9 +39,12 @@ class Main {
         this.ctx.fillStyle = 'black';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
+        const scale = 8 / this.GRID_WIDTH;
+        this.text_scale = [scale * 50, scale * 30, scale * 20];
 
         this.START = [0, 0];
         this.END = [this.GRID_WIDTH - 1, this.GRID_HEIGHT - 1];
+        this.se_mode = 0; // SE == Start/End
 
         this.show_path = true;
         this.show_set = true;
@@ -54,7 +59,6 @@ class Main {
         this.steps = 0;
 
         this.maze = new Maze(this);
-        this.maze.generate();
     }
 
     handleMouseMove(event) {
@@ -83,16 +87,20 @@ class Main {
                 const tile = this.grid[x][y];
                 const isStart = (x == this.START[0] && y == this.START[1]);
                 const isEnd = (x == this.END[0] && y == this.END[1]);
+                const atCP = (x == this.maze.current_position[0] && y == this.maze.current_position[1]);
 
                 // Fill background based on state
                 if (tile.wall) {
                     this.ctx.fillStyle = 'black';
                     this.ctx.fillRect(x * this.TILE_SIZE, y * this.TILE_SIZE, this.TILE_SIZE, this.TILE_SIZE);
                     continue;
-                } else if (tile.maze) {
+                } else if (this.maze.show_path && tile.maze && atCP) {
+                    this.ctx.fillStyle = "rgb(194,16,1)";
+                } else if (this.maze.show_path && tile.maze) {
                     this.ctx.fillStyle = "rgba(2, 76, 247, 1)";
                 } else if (isStart || isEnd) {
-                    // continue;
+                    if (isStart && this.se_mode == 1) continue;
+                    if (isEnd && this.se_mode == 2) continue;
                     this.ctx.fillStyle = "rgb(36,140,176)";
                 } else if (!this.show_set) {
                     continue;
@@ -137,18 +145,19 @@ class Main {
 
                 // Text
                 if (isStart || isEnd) {
-                    continue;
+                    if (isStart && this.se_mode == 1) continue;
+                    if (isEnd && this.se_mode == 2) continue;
                     this.ctx.fillStyle = "black";
-                    this.ctx.font = "bold 50px sans-serif";
+                    this.ctx.font = `bold ${this.text_scale[0]}px sans-serif`;
                     this.ctx.fillText(isStart ? "A" : "B", centerX, centerY);
                 } else if (!this.show_cost) {
                     continue;
                 } else if (tile.f > 0) {
                     this.ctx.fillStyle = "black";
-                    this.ctx.font = "bold 30px sans-serif";
+                    this.ctx.font = `bold ${this.text_scale[1]}px sans-serif`;
                     this.ctx.fillText(tile.f, centerX, centerY);
 
-                    this.ctx.font = "bold 20px sans-serif";
+                    this.ctx.font = `bold ${this.text_scale[2   ]}px sans-serif`;
                     this.ctx.fillText(tile.g, tileX + spacing, tileY + spacing);
                     this.ctx.fillText(tile.h, tileX + this.TILE_SIZE - spacing, tileY + spacing);
                 }
@@ -168,6 +177,7 @@ class Main {
 
     step() {
         if (this.complete) return;
+        if (this.maze.active && !this.maze.complete) return;
         this.steps++;
 
         // Find node in OPEN with lowest F cost
@@ -225,13 +235,40 @@ class Main {
         }
     }
 
+    place_se(tile) {
+        if (tile.wall) return; 
+        if (this.se_mode == 1) {
+            // Edit start
+            if (tile.x == this.END[0] && tile.y == this.END[1]) return;
+            this.START = [this.mouse.tileX, this.mouse.tileY];
+            this.open.clear();
+            let start_tile = this.grid[this.START[0]][this.START[1]];
+            this.open.add(start_tile);
+        } else {
+            // Edit end
+            if (tile.x == this.START[0] && tile.y == this.START[1]) return;
+            this.END = [this.mouse.tileX, this.mouse.tileY];
+        }
+        this.se_mode = 0;
+        start_end_button.textContent = "Edit Start/End";
+        this.render();
+    }
+
     place_tile() {
+
         if (this.mouse.tileX >= this.GRID_WIDTH || this.mouse.tileY >= this.GRID_HEIGHT) return; 
         let tile = this.grid[this.mouse.tileX][this.mouse.tileY];
         if (tile == undefined) return;
+
+        if (this.se_mode != 0) {
+            this.place_se(tile);
+            return;
+        }
+
         if (this.complete) return;
         if (tile.f != 0) return;
         if (tile.x == this.START[0] && tile.y == this.START[1]) return;
+        if (tile.x == this.END[0] && tile.y == this.END[1]) return;
         if (tile != this.brush) {
             this.grid[this.mouse.tileX][this.mouse.tileY].wall = this.brush;
         }
@@ -239,12 +276,16 @@ class Main {
     }
 
     restart() {
-        this.grid = createArray2D(this.GRID_WIDTH, this.GRID_HEIGHT);
+        this.maze.restart();
         this.open.clear();
         this.closed.clear();
         this.complete = false;
         this.brush = 1;
         this.steps = 0;
+        this.START = [0, 0];
+        this.END = [this.GRID_WIDTH - 1, this.GRID_HEIGHT - 1];
+        this.se_mode = 0;
+
         cancelAnimationFrame(this.update);
         this.run();
     }
@@ -268,7 +309,7 @@ class Main {
 
 }
 
-let main = new Main();
+let main = new Main(9);
 main.run();
 
 step_button.onclick = function() {
@@ -277,13 +318,31 @@ step_button.onclick = function() {
 }
 
 restart_button.onclick = function() {
+    if (main.maze.active) {
+        main.maze.active = false;
+        maze_button.textContent = 'Maze: OFF';
+    }
     main.restart();
     main.render();
 }
 
 complete_button.onclick = function() {
+    if (main.maze.active && !main.maze.complete) return;
     while (!main.complete) {
         main.step();
+    }
+    main.render();
+}
+ 
+maze_button.onclick = function() {
+    main.maze.active = !main.maze.active;
+    maze_button.textContent = (main.maze.active) ? "Maze: ON" : "Maze: OFF";
+    if (main.maze.active) {
+        main.restart();
+        main.maze.active = true;
+        main.maze.generate();
+    } else {
+        main.restart();
     }
     main.render();
 }
@@ -306,6 +365,14 @@ cost_button.onclick = function() {
     main.render();
 }
 
+const SE_MODES = ["Edit Start/End", "Editing: Start", "Editing: End"];
+start_end_button.onclick = function() {
+    if (main.steps != 0) return;
+    main.se_mode = (main.se_mode + 1) % SE_MODES.length;
+    start_end_button.textContent = SE_MODES[main.se_mode];
+    main.render();
+}
+
 // ----------- Play-Pause -----------
 var playing = false;
 var intervalId = 0;
@@ -323,9 +390,21 @@ function pause() {
 
 play_button.onclick = function() {
     if (main.complete) return;
+    if (main.maze.active && !main.maze.complete) return;
     playing = !playing;
     if (playing) {
         play_button.textContent = 'Pause';
         intervalId = setInterval(play, 25);
     } else pause();
 }
+
+// --------- Grid size UI ---------
+const input = document.getElementById("grid_input");
+input.addEventListener("input", () => {
+    let value = parseInt(input.value);
+    if (isNaN(value)) return;
+    main.restart();
+    main = new Main(value);
+    main.run();
+    main.render();
+});
