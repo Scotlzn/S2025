@@ -1,0 +1,32 @@
+body {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+canvas {
+    outline-style: auto;
+    outline-width: 2px;
+    outline-style: solid;
+}
+
+.chess {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.chess_buttons {
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-right: 20px;
+    margin-bottom: 10px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    user-select: none;
+}
