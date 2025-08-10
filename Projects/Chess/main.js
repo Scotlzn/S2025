@@ -41,6 +41,7 @@ class Main {
         this.overlay = new Tile(0, 0);
         this.VMM = new ValidMovesManager(this);
         this.original_tile = [];
+        this.valid_moves = [];
         this.promoting_pawn = undefined;
     }
 
@@ -60,9 +61,10 @@ class Main {
     handleMouseDown(event) {
         if (this.promoting_pawn != undefined) return;
 
-        this.mouse.down = true;
         let tile = this.grid[this.mouse.tileX][this.mouse.tileY];
         if (tile.piece == 0) return;
+
+        this.mouse.down = true;
 
         // If overlay is active then dont do anything
         if (this.overlay.piece != 0) return;
@@ -81,13 +83,13 @@ class Main {
 
         // Find valid moves
         const piece = this.overlay.piece % 6 || 6;
-        this.VMM.valid_moves = [];
-        this.VMM.validMovesPiece(piece, this.mouse.tileX, this.mouse.tileY, false);
+        this.valid_moves = this.VMM.validMovesPiece(piece, this.mouse.tileX, this.mouse.tileY, false, false);
 
         this.render();
     }
 
     handleMouseUp(event) {
+        if (this.mouse.down == false) return;
         if (this.promoting_pawn != undefined) return;
 
         this.mouse.down = false;
@@ -97,15 +99,14 @@ class Main {
         // Only place if tile is valid
         const original_tile = this.grid[this.original_tile[0]][this.original_tile[1]];
         const sameTile = this.mouse.tileX == original_tile.x && this.mouse.tileY == original_tile.y;
-        if (!this.VMM.valid_moves.includes(tile) && !sameTile) return;
+        if (!this.valid_moves.includes(tile) && !sameTile) return;
 
         // Place tile
         tile.piece = this.overlay.piece;
         tile.color = this.overlay.color;
 
         // ----------- Check and checkmate -----------
-        const all_legal_moves = this.VMM.getAllValidTiles(tile.color);
-        this.VMM.valid_moves = [];
+        const all_legal_moves = this.VMM.getAllValidTiles(tile.color, true, true);
 
         // Find opponents king
         const piece_id = (tile.color == 1) ? 12 : 6;
@@ -115,13 +116,13 @@ class Main {
         if (all_legal_moves.has(opponent_king)) {
             console.log("Check!")
 
-            // --------- Mate ------------
-            this.VMM.validMovesKing(opponent_king.x, opponent_king.y, false);
-            // If king has no moves or all the captures it can make are protected
-            if (this.VMM.valid_moves.length == 0 || this.VMM.valid_moves.every(item => all_legal_moves.has(item))) {
-                console.log("Checkmate!")
+            // ------------ Mate ------------
+            // If all the opponents pieces have no legal moves
+            const opponent_color = (tile.color == 1) ? 2 : 1;
+            const checkmate = this.VMM.checkmateBlockingCheck(opponent_color);
+            if (checkmate) {
+                console.log("Checkmate!");
             }
-            this.VMM.valid_moves = [];
         }
 
         // ----------- Castling -----------
@@ -160,6 +161,8 @@ class Main {
         this.overlay.piece = 0;
         this.overlay.castled = false;
 
+        this.valid_moves = [];
+
         this.render();
     }
 
@@ -172,7 +175,7 @@ class Main {
                 this.ctx.fillStyle = (x + y) % 2 === 0 ? "#ddd" : "#bbb";
                 this.ctx.fillRect(x * this.TILE_SIZE, y * this.TILE_SIZE, this.TILE_SIZE, this.TILE_SIZE);
                 let tile = this.grid[x][y];
-                if (this.VMM.valid_moves.includes(tile)) {
+                if (this.valid_moves.includes(tile)) {
                     this.ctx.fillStyle = 'red';
                     this.ctx.fillRect(x * this.TILE_SIZE + this.HALF_TILE_SIZE * 0.5, y * this.TILE_SIZE + this.HALF_TILE_SIZE * 0.5, this.HALF_TILE_SIZE, this.HALF_TILE_SIZE);
                 }

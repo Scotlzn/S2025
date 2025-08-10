@@ -3,37 +3,45 @@ import { DIRECTION8, inBounds, DIRECTION4, DIRECTION4C } from "./support.js";
 export default class ValidMovesManager {
     constructor(main) {
         this.main = main;
-        this.valid_moves = [];
         this.en_passent_tile = undefined;
     }
 
-    getAllValidMoves(color) {
-        // Loop through board
-        let legal_moves = {}
-        for (let x = 0; x < 8; x++) {
-            for (let y = 0; y < 8; y++) {
-                const tile = this.main.grid[x][y];
-                if (tile.piece == 0) continue;
-                if (tile.color != color) continue;
-                this.valid_moves = [];
-                this.validMovesPiece(tile.piece, x, y, false);
-                legal_moves[[x, y]] = this.valid_moves;
-            }
+    movingIntoCheck(new_tile) {
+        let king_in_check = false;
+
+        // Save previous state
+        const previous_new_tile = { piece: new_tile.piece, color: new_tile.color };
+
+        // Perform the move
+        new_tile.piece = this.main.overlay.piece;
+        new_tile.color = this.main.overlay.color;
+
+        // Find if my king is now in check (in temp this.main.grid)
+        const opponent_color = (new_tile.color == 1) ? 2 : 1; 
+        const opponent_legal_moves = this.getAllValidTiles(opponent_color, true, true);
+        const my_king_id = (new_tile.color == 1) ? 6 : 12;
+        const my_king_tile = this.main.grid.flat().filter(tile => tile.piece == my_king_id)[0]; // Returns array    
+        if (opponent_legal_moves.has(my_king_tile)) {
+            king_in_check = true;
         }
-        return legal_moves;
+
+        // Restore grid
+        new_tile.piece = previous_new_tile.piece;
+        new_tile.color = previous_new_tile.color;
+
+        return king_in_check;
     }
 
-    getAllValidTiles(color) {
+    getAllValidTiles(color, neutral, skipCheck) {
         let legal_moves = new Set();
         for (let x = 0; x < 8; x++) {
             for (let y = 0; y < 8; y++) {
                 const tile = this.main.grid[x][y];
                 if (tile.piece == 0) continue;
                 if (tile.color != color) continue;
-                this.valid_moves = [];
                 const piece = tile.piece % 6 || 6;
-                this.validMovesPiece(piece, x, y, true);
-                for (const move of this.valid_moves) {
+                let valid_moves = this.validMovesPiece(piece, x, y, neutral, skipCheck);
+                for (const move of valid_moves) {
                     legal_moves.add(move);
                 }
             }
@@ -41,19 +49,44 @@ export default class ValidMovesManager {
         return legal_moves;
     }
 
-    validMovesPiece(piece, tileX, tileY, neutral) {
-        const PIECE_FUNCTIONS = {
-            1: () => this.validMovesPawn(tileX, tileY, neutral),
-            2: () => this.validMovesKnight(tileX, tileY, neutral),
-            3: () => this.validMovesQRB(DIRECTION4C, tileX, tileY, neutral),
-            4: () => this.validMovesQRB(DIRECTION4, tileX, tileY, neutral),
-            5: () => this.validMovesQRB(DIRECTION8, tileX, tileY, neutral),
-            6: () => this.validMovesKing(tileX, tileY, neutral),
-        };
-        PIECE_FUNCTIONS[piece]();
+    checkmateBlockingCheck(opponent_color) {
+        let opponent_legal_moves = new Set();
+        this.main.overlay.color = opponent_color; // Ugly fix ._.
+        for (let x = 0; x < 8; x++) {
+            for (let y = 0; y < 8; y++) {
+                const tile = this.main.grid[x][y];
+                if (tile.piece == 0) continue;
+                if (tile.color != opponent_color) continue;
+                const piece = tile.piece % 6 || 6;
+                this.main.overlay.piece = tile.piece; // Ugly fix ._.
+                let valid_moves = this.validMovesPiece(piece, x, y, false, false);
+                for (const move of valid_moves) {
+                    opponent_legal_moves.add(move);
+                }
+            }
+        }
+        // Checkmate
+        if (opponent_legal_moves.size == 0) {
+            return true;
+        }
+        return false;
     }
 
-    validMovesKing(tileX, tileY, neutral) {
+    validMovesPiece(piece, tileX, tileY, neutral, skipCheck) {
+        const PIECE_FUNCTIONS = {
+            1: () => this.validMovesPawn(tileX, tileY, neutral, skipCheck),
+            2: () => this.validMovesKnight(tileX, tileY, neutral, skipCheck),
+            3: () => this.validMovesQRB(DIRECTION4C, tileX, tileY, neutral, skipCheck),
+            4: () => this.validMovesQRB(DIRECTION4, tileX, tileY, neutral, skipCheck),
+            5: () => this.validMovesQRB(DIRECTION8, tileX, tileY, neutral, skipCheck),
+            6: () => this.validMovesKing(tileX, tileY, neutral, skipCheck),
+        };
+        const valid_moves = PIECE_FUNCTIONS[piece]();
+        return valid_moves;
+    }
+
+    validMovesKing(tileX, tileY, neutral, skipCheck) {
+        let valid_moves = [];
         const original_tile = this.main.grid[tileX][tileY];
         for (const [dx, dy] of DIRECTION8) {
             const x = tileX + dx;
@@ -61,7 +94,8 @@ export default class ValidMovesManager {
             if (!inBounds(x, y, 8, 8)) continue;
             let tile = this.main.grid[x][y];
             if (tile.piece != 0 && (tile.color == original_tile.color || neutral)) continue;
-            this.valid_moves.push(tile);
+            if (!skipCheck && this.movingIntoCheck(tile)) continue;
+            valid_moves.push(tile);
         }
 
         // --------- Castling ------------
@@ -71,16 +105,24 @@ export default class ValidMovesManager {
             const isEmpty = (x) => this.main.grid[x][castling_y].piece == 0;
             // Kingside
             if (!this.main.grid[7][castling_y].moved && isEmpty(5) && isEmpty(6)) {
-                this.valid_moves.push(this.main.grid[6][castling_y]);
-            }
+                const tile = this.main.grid[6][castling_y];
+                if (skipCheck || !this.movingIntoCheck(tile)) {
+                    valid_moves.push(tile);
+                }
             // Queenside 
-            if (!this.main.grid[0][castling_y].moved && isEmpty(1) && isEmpty(2) && isEmpty(3)) {
-                this.valid_moves.push(this.main.grid[1][castling_y]);
+            } else if (!this.main.grid[0][castling_y].moved && isEmpty(1) && isEmpty(2) && isEmpty(3)) {
+                const tile = this.main.grid[1][castling_y];
+                if (skipCheck || !this.movingIntoCheck(tile)) {
+                    valid_moves.push(tile);
+                }
             }
         }
+
+        return valid_moves;
     }
 
-    validMovesQRB(directions, tileX, tileY, neutral) {
+    validMovesQRB(directions, tileX, tileY, neutral, skipCheck) {
+        let valid_moves = [];
         const original_tile = this.main.grid[tileX][tileY];
 
         for (const [dx, dy] of directions) {
@@ -95,19 +137,25 @@ export default class ValidMovesManager {
 
                 const tile = this.main.grid[x][y];
 
-                if (tile.piece !== 0) {
-                    if (tile.color !== original_tile.color || neutral) {
-                        this.valid_moves.push(tile); // Capture enemy piece
+                if (tile.piece != 0) {
+                    if (tile.color != original_tile.color || neutral) {
+                        if (skipCheck || !this.movingIntoCheck(tile)) {
+                            valid_moves.push(tile); // Capture enemy piece
+                        }
                     }
                     break; // Stop after any piece
                 }
 
-                this.valid_moves.push(tile); // Empty square
+                if (!skipCheck && this.movingIntoCheck(tile)) continue;
+                valid_moves.push(tile); // Empty square
             }
         }
+
+        return valid_moves;
     }
 
-    validMovesKnight(tileX, tileY, neutral) {
+    validMovesKnight(tileX, tileY, neutral, skipCheck) {
+        let valid_moves = [];
         const original_tile = this.main.grid[tileX][tileY];
         DIRECTION4.forEach((direction) => {
             let x = tileX + direction[0] * 2;
@@ -119,13 +167,16 @@ export default class ValidMovesManager {
                 if (inBounds(new_x, new_y, 8, 8)) {
                     let tile = this.main.grid[new_x][new_y];
                     if (tile.piece != 0 && (tile.color == original_tile.color || neutral)) return;
-                    this.valid_moves.push(tile);
+                    if (!skipCheck && this.movingIntoCheck(tile)) return;
+                    valid_moves.push(tile);
                 }
             }); 
         });
+        return valid_moves;
     }
 
-    validMovesPawn(tileX, tileY, neutral) {
+    validMovesPawn(tileX, tileY, neutral, skipCheck) {
+        let valid_moves = [];
         const original_tile = this.main.grid[tileX][tileY];
         
         // Check for captures and return
@@ -138,7 +189,9 @@ export default class ValidMovesManager {
 
             // Capture
             if (tile.piece != 0 && (tile.color != original_tile.color || neutral)) {
-                this.valid_moves.push(tile);
+                if (skipCheck || !this.movingIntoCheck(tile)) {
+                    valid_moves.push(tile);
+                }
             }
 
             // En passent
@@ -147,12 +200,14 @@ export default class ValidMovesManager {
                 let en_passent_tile = this.main.grid[x][tileY];
                 const enemy_pawn = (original_tile.color == 1) ? 7 : 1;
                 if (en_passent_tile.piece == enemy_pawn && en_passent_tile.moved) {
-                    this.valid_moves.push(tile);
-                    this.en_passent_tile = en_passent_tile;
+                    if (skipCheck || !this.movingIntoCheck(tile)) {
+                        valid_moves.push(tile);
+                        this.en_passent_tile = en_passent_tile;
+                    }
                 }
             }
         });
-        if (this.valid_moves.length >= 1) return;
+        if (valid_moves.length >= 1) return valid_moves;
 
         // Check the 1-2 spaces infront
         let y = tileY;
@@ -162,8 +217,10 @@ export default class ValidMovesManager {
             y += direction;
             if (!inBounds(tileX, y, 8, 8)) continue;
             let tile = this.main.grid[tileX][y];
-            if (tile.piece != 0 && tile.color == original_tile.color) return;
-            this.valid_moves.push(tile);
+            if (tile.piece != 0) return valid_moves;
+            if (!skipCheck && this.movingIntoCheck(tile)) continue;
+            valid_moves.push(tile);
         }
+        return valid_moves;
     }
 }

@@ -1,0 +1,3 @@
+-   Turn system
+-   Random AI / Player vs Player
+-   Better UI for promotion
