@@ -1,3 +1,8 @@
--   Turn system
 -   Random AI / Player vs Player
--   Better UI for promotion
+-   Actual images
+
+-   Step button
+-   Human and random buttons
+-   Flip board button
+
+-   Can't place piece -> auto return to original tile

@@ -3,19 +3,59 @@
     <head>
         <title>Chess</title>
         <link rel="stylesheet" href="./style.css">
+        <link rel="stylesheet" href="./navbar.css">
         <script defer src="main.js" type="module"></script>
     </head>
     <body>
-        <div class="chess">
-            <canvas width="800" height="800" id="canvas" oncontextmenu="return false;">Canvas failed to load!</canvas>
-            <div class="chess_buttons">
-                <div id="pawn_promotion_buttons" style="display: none;">
-                    <button id="queen_button">Queen</button>
-                    <button id="rook_button">Rook</button>
-                    <button id="bishop_button">Bishop</button>
-                    <button id="knight_button">Knight</button>
+        <div class="navbar">
+            <a href="../../index.html">Chess</a>
+            <button id="step_button">Step</button>
+            <button id="reset_button">Reset</button>
+            <div class="dropdown">
+                <button class="dropbtn">
+                    <span>
+                        Human
+                        <i class="fa fa-caret-down"></i>
+                    </span>
+                </button>
+                <div class="dropdown-content">
+                    <a href="#link1">Human</a>
+                    <a href="#link2">Random AI</a>
                 </div>
             </div>
+            <p>Vs</p>
+             <div class="dropdown">
+                <button class="dropbtn">
+                    <span>
+                        Human
+                        <i class="fa fa-caret-down"></i>
+                    </span>
+                </button>
+                <div class="dropdown-content">
+                    <a href="#link1">Human</a>
+                    <a href="#link2">Random AI</a>
+                </div>
+            </div>
+            <button id="flip_button">Flip Board</button>
+            <p id="turn_ui">Turn: White</p>
+            <div class="dropdown" id="promotion_menu">
+                    <button class="dropbtn" id="promotion_button">
+                        <span>
+                            Promotion
+                            <i class="fa fa-caret-down"></i>
+                        </span>
+                    </button>
+                    <div class="dropdown-content" id="promotion_buttons">
+                        <button>Queen</button>
+                        <button>Rook</button>
+                        <button>Bishop</button>
+                        <button>Knight</button>
+                    </div>
+                </div> 
+            </div>
+        </div>
+        <div class="chess">
+            <canvas width="800" height="800" id="canvas" oncontextmenu="return false;">Canvas failed to load!</canvas>
         </div>
     </body>
 </html>

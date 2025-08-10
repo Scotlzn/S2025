@@ -2,11 +2,9 @@ import { PIECES, loadFromFEN } from "./support.js";
 import Tile from "./tile.js";
 import ValidMovesManager from "./valid_moves.js";
 
-const buttons_div = document.getElementById("pawn_promotion_buttons")
-const queen_button = document.getElementById("queen_button");
-const rook_button = document.getElementById("rook_button");
-const bishop_button = document.getElementById("bishop_button");
-const knight_button = document.getElementById("knight_button");
+var promotion_menu = document.getElementById("promotion_menu");
+var turn_ui = document.getElementById("turn_ui");
+var reset_button = document.getElementById("reset_button");
 
 class Main {
     constructor() {
@@ -37,12 +35,15 @@ class Main {
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
 
+        this.VMM = new ValidMovesManager(this);
+
         this.grid = loadFromFEN('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR');
         this.overlay = new Tile(0, 0);
-        this.VMM = new ValidMovesManager(this);
         this.original_tile = [];
         this.valid_moves = [];
         this.promoting_pawn = undefined;
+        this.turn = 1;
+        this.check = false;
     }
 
     handleMouseMove(event) {
@@ -62,7 +63,10 @@ class Main {
         if (this.promoting_pawn != undefined) return;
 
         let tile = this.grid[this.mouse.tileX][this.mouse.tileY];
-        if (tile.piece == 0) return;
+        if (this.overlay.piece == 0 && tile.piece == 0) return;
+
+        // Check if it's this colours turn
+        if (tile.color != this.turn) return;
 
         this.mouse.down = true;
 
@@ -106,6 +110,7 @@ class Main {
         tile.color = this.overlay.color;
 
         // ----------- Check and checkmate -----------
+        this.check = false;
         const all_legal_moves = this.VMM.getAllValidTiles(tile.color, true, true);
 
         // Find opponents king
@@ -114,14 +119,14 @@ class Main {
         const opponent_king = this.grid.flat().filter(tile => tile.piece == piece_id)[0];
         // Opponents king is a valid move?
         if (all_legal_moves.has(opponent_king)) {
-            console.log("Check!")
-
+            this.check = true;
+            turn_ui.textContent = "Check!";
             // ------------ Mate ------------
             // If all the opponents pieces have no legal moves
             const opponent_color = (tile.color == 1) ? 2 : 1;
             const checkmate = this.VMM.checkmateBlockingCheck(opponent_color);
             if (checkmate) {
-                console.log("Checkmate!");
+                turn_ui.textContent = "Checkmate!";
             }
         }
 
@@ -148,13 +153,17 @@ class Main {
             const promotion_file = (tile.color == 1) ? 0 : 7;
             if (this.mouse.tileY == promotion_file) {
                 this.promoting_pawn = tile;
-                buttons_div.style.display = "block";
+                promotion_menu.style.display = "block";
             }
         }
 
         if (!sameTile) {
             original_tile.moved = true;
             tile.moved = true;
+            this.turn = (this.turn == 1) ? 2 : 1; 
+            if (!this.check) {
+                turn_ui.textContent = (this.turn == 1) ? "Turn: White" : "Turn: Black";
+            }
         }
 
         // Remove overlay
@@ -193,6 +202,18 @@ class Main {
         }
     }
 
+    reset() {
+        this.BOUNDING_BOX = this.canvas.getBoundingClientRect();
+        this.grid = loadFromFEN('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR');
+        this.overlay = new Tile(0, 0);
+        this.original_tile = [];
+        this.valid_moves = [];
+        this.promoting_pawn = undefined;
+        this.turn = 1;
+        turn_ui.textContent = "Turn: White";
+        this.VMM.en_passent_tile = undefined;
+    }
+
     run() {
         this.render();
     }
@@ -202,33 +223,50 @@ class Main {
 let main = new Main();
 main.run();
 
-function promote_pawn(piece) {
-    main.promoting_pawn.piece = piece;
-    main.promoting_pawn = undefined;
-    buttons_div.style.display = "none";
+// --------------------------- UI --------------------------
+
+reset_button.onclick = () => {
+    main.reset();
     main.render();
 }
 
-queen_button.onclick = () => {
-    if (main.promoting_pawn == undefined) return;
-    const piece = (main.promoting_pawn.color == 1) ? 5 : 11;
-    promote_pawn(piece);
+// --------------------- DROPDOWNS -----------------------
+const dropdowns = document.querySelectorAll('.dropdown');
+const dropbuttons = document.querySelectorAll('.dropbtn');
+
+// Dropdown's visability toggles when clicked
+dropbuttons.forEach((button, index) => {
+    button.onclick = function() {
+        dropdowns[index].classList.toggle('show');
+    }
+});
+
+// Close the dropdown if the user clicks outside of it
+window.addEventListener('click', function(event) {
+    dropdowns.forEach((dropdown) => {
+        if (!dropdown.contains(event.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
+});
+
+// --------------- Promotions -----------------
+function promote_pawn(piece) {
+    main.promoting_pawn.piece = piece;
+    main.promoting_pawn = undefined;
+    promotion_menu.style.display = "none";
+    main.render();
 }
 
-rook_button.onclick = () => {
-    if (main.promoting_pawn == undefined) return;
-    const piece = (main.promoting_pawn.color == 1) ? 4 : 10;
-    promote_pawn(piece);
-}
-
-bishop_button.onclick = () => {
-    if (main.promoting_pawn == undefined) return;
-    const piece = (main.promoting_pawn.color == 1) ? 3 : 9;
-    promote_pawn(piece);
-} 
-
-knight_button.onclick = () => {
-    if (main.promoting_pawn == undefined) return;
-    const piece = (main.promoting_pawn.color == 1) ? 2 : 8;
-    promote_pawn(piece);
+const PROMOTIONS = {"Queen": 5,"Rook": 4,"Bishop": 3,"Knight": 2}
+const promotion_buttons = document.getElementById("promotion_buttons").children;
+for (let button = 0; button < 4; button++) {
+    const button_object = promotion_buttons[button]
+    button_object.onclick = () => {
+        if (main.promoting_pawn == undefined) return;
+        const colorMultiplier = (main.turn == 2) ? 0 : 1;
+        const piece = PROMOTIONS[button_object.textContent] + 6 * colorMultiplier;
+        promote_pawn(piece);
+        dropdowns[2].classList.remove('show'); // Remove dropdown
+    }
 }
