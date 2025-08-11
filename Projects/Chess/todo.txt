@@ -1,8 +1,27 @@
 -   Random AI / Player vs Player
 -   Actual images
 
--   Step button
--   Human and random buttons
--   Flip board button
+-   Back button
 
--   Can't place piece -> auto return to original tile
+# Right now
+    - Switch all valid moves code to use overlay
+    as overlay has all the piece data that I need
+    - Fix check its broken
+
+
+- AI CASTLING, EN PASSANT, CHECK, CHECKMATE -> transfer everything
+
+# Bugs
+    - Playing against random AI:
+        - Promotion is broken -> White pawn promotes to black piece?
+        - AI crashes game when king does something idk
+        - Sometimes the AI plays non legal moves
+
+# Additional features
+    - Faint coordinate labels
+    - Import/Export FEN <- Improve FEN loader (who to move)
+        same text shows Copied! for 5 seconds
+    - 50 move rule
+    - Stalemate
+    - Draw by insufficient material
+    - Chess sounds

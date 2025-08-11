@@ -3,6 +3,6 @@ export default class Tile {
         this.x = x, this.y = y;
         this.piece = 0;
         this.color = 0;
-        this.moved = false;
+        this.moves = 0;
     }
 }

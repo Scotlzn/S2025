@@ -3,7 +3,7 @@ import { DIRECTION8, inBounds, DIRECTION4, DIRECTION4C } from "./support.js";
 export default class ValidMovesManager {
     constructor(main) {
         this.main = main;
-        this.en_passent_tile = undefined;
+        this.en_passant_tile = undefined;
     }
 
     movingIntoCheck(new_tile) {
@@ -20,7 +20,7 @@ export default class ValidMovesManager {
         const opponent_color = (new_tile.color == 1) ? 2 : 1; 
         const opponent_legal_moves = this.getAllValidTiles(opponent_color, true, true);
         const my_king_id = (new_tile.color == 1) ? 6 : 12;
-        const my_king_tile = this.main.grid.flat().filter(tile => tile.piece == my_king_id)[0]; // Returns array    
+        const my_king_tile = this.main.grid.flat().find(tile => tile.piece == my_king_id); 
         if (opponent_legal_moves.has(my_king_tile)) {
             king_in_check = true;
         }
@@ -30,6 +30,38 @@ export default class ValidMovesManager {
         new_tile.color = previous_new_tile.color;
 
         return king_in_check;
+    }
+
+    getAllValidMoves(color, neutral, skipCheck) {
+        let legal_moves = {};
+        for (let x = 0; x < 8; x++) {
+            for (let y = 0; y < 8; y++) {
+                const tile = this.main.grid[x][y];
+                if (tile.piece == 0) continue;
+                if (tile.color != color) continue;
+                const piece = tile.piece % 6 || 6;
+                let valid_moves = this.validMovesPiece(piece, x, y, neutral, skipCheck);
+                let piece_moves = [];
+                for (const move of valid_moves) {
+                    piece_moves.push(move);
+                }
+                if (piece_moves.length == 0) continue;
+                legal_moves[[x, y]] = piece_moves;
+            }
+        }
+        return legal_moves;
+    }
+
+    findEnPassant(color) {
+        // Searches through pawns and changes this.en_passant_tile
+        const pawn_id = (color == 1) ? 1 : 7;
+        for (let x = 0; x < 8; x++) {
+            for (let y = 0; y < 8; y++) {
+                const tile = this.main.grid[x][y];
+                if (tile.piece != pawn_id || tile.color != color) continue;
+                let pawn_moves = this.validMovesPawn(x, y, false, false);
+            }
+        }
     }
 
     getAllValidTiles(color, neutral, skipCheck) {
@@ -100,17 +132,17 @@ export default class ValidMovesManager {
 
         // --------- Castling ------------
         // Only activate on mouse down, If queen and rook both have not moved
-        if (original_tile.piece == 0 && !original_tile.moved) {
-            const castling_y = (original_tile.color == 1) ? 7 : 0;
+        if (this.main.mouse.down && this.main.overlay.moves == 0) {
+            const castling_y = (this.main.overlay.color == 1) ? 7 : 0;
             const isEmpty = (x) => this.main.grid[x][castling_y].piece == 0;
             // Kingside
-            if (!this.main.grid[7][castling_y].moved && isEmpty(5) && isEmpty(6)) {
+            if (this.main.grid[7][castling_y].moves == 0 && isEmpty(5) && isEmpty(6)) {
                 const tile = this.main.grid[6][castling_y];
                 if (skipCheck || !this.movingIntoCheck(tile)) {
                     valid_moves.push(tile);
                 }
             // Queenside 
-            } else if (!this.main.grid[0][castling_y].moved && isEmpty(1) && isEmpty(2) && isEmpty(3)) {
+            } else if (this.main.grid[0][castling_y].moves == 0 && isEmpty(1) && isEmpty(2) && isEmpty(3)) {
                 const tile = this.main.grid[1][castling_y];
                 if (skipCheck || !this.movingIntoCheck(tile)) {
                     valid_moves.push(tile);
@@ -193,16 +225,26 @@ export default class ValidMovesManager {
                     valid_moves.push(tile);
                 }
             }
-
+            
             // En passent
             // Check under pawn for opponent pawn, only when mouse down
-            if (original_tile.piece == 0) {
-                let en_passent_tile = this.main.grid[x][tileY];
+            if (this.main.mouse.down) {
+                let en_passant_tile = this.main.grid[x][tileY];
+
                 const enemy_pawn = (original_tile.color == 1) ? 7 : 1;
-                if (en_passent_tile.piece == enemy_pawn && en_passent_tile.moved) {
+                const isEnemyPawn = en_passant_tile.piece == enemy_pawn
+
+                // First move and in past rank 5/2 respectivly
+                const firstMove = (en_passant_tile.moves <= 1);
+                const pastThreshold = (original_tile.color == 1) ? (tileY < 5) : (tileY > 2);
+
+                // Last move had to have been the enemy pawn
+                const lastMove = (this.main.last_move != undefined && this.main.last_move == en_passant_tile);
+
+                if (isEnemyPawn && firstMove && pastThreshold && lastMove) {
                     if (skipCheck || !this.movingIntoCheck(tile)) {
                         valid_moves.push(tile);
-                        this.en_passent_tile = en_passent_tile;
+                        this.en_passant_tile = en_passant_tile;
                     }
                 }
             }

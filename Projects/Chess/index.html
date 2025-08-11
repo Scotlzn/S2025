@@ -11,32 +11,46 @@
             <a href="../../index.html">Chess</a>
             <button id="step_button">Step</button>
             <button id="reset_button">Reset</button>
+            <div class="dropdown" id="player1">
+                <button class="dropbtn">
+                    <span>
+                        Human
+                        <i class="fa fa-caret-down"></i>
+                    </span>
+                </button>
+                <div class="dropdown-content">
+                    <button>Human</button>
+                    <button>Random AI</button>
+                </div>
+            </div>
+            <p>VS</p>
+             <div class="dropdown" id="player2">
+                <button class="dropbtn">
+                    <span>
+                        Human
+                        <i class="fa fa-caret-down"></i>
+                    </span>
+                </button>
+                <div class="dropdown-content">
+                    <button>Human</button>
+                    <button>Random AI</button>
+                </div>
+            </div>
             <div class="dropdown">
                 <button class="dropbtn">
                     <span>
-                        Human
+                        Options
                         <i class="fa fa-caret-down"></i>
                     </span>
                 </button>
                 <div class="dropdown-content">
-                    <a href="#link1">Human</a>
-                    <a href="#link2">Random AI</a>
+                    <button id="back_button">Back</button>
+                    <button id="flip_button">Flip Board</button>
+                    <button id="image_button">Toggle images</button>
+                    <button id="import_button">Import FEN</button>
+                    <button id="export_button">Export FEN</button>
                 </div>
             </div>
-            <p>Vs</p>
-             <div class="dropdown">
-                <button class="dropbtn">
-                    <span>
-                        Human
-                        <i class="fa fa-caret-down"></i>
-                    </span>
-                </button>
-                <div class="dropdown-content">
-                    <a href="#link1">Human</a>
-                    <a href="#link2">Random AI</a>
-                </div>
-            </div>
-            <button id="flip_button">Flip Board</button>
             <p id="turn_ui">Turn: White</p>
             <div class="dropdown" id="promotion_menu">
                     <button class="dropbtn" id="promotion_button">

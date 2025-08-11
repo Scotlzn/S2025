@@ -19,6 +19,25 @@ export const PIECES = {
     12: 'k'
 }
 
+export const COORDINATES = {
+    "a": 0,
+    "b": 1,
+    "c": 2,
+    "d": 3,
+    "e": 4,
+    "f": 5,
+    "g": 6,
+    "h": 7
+}
+
+export function isUpper(str) {
+    return str === str.toUpperCase() && str !== str.toLowerCase();
+}
+
+export function isLower(str) {
+    return str === str.toLowerCase() && str !== str.toUpperCase();
+}
+
 export function getRandomIntInRange(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -50,28 +69,4 @@ export function load_assets(func) {
     img.onload = function() {
         func(img);
     };
-}
-
-export function loadFromFEN(fen) {
-    let grid = createArray2D(8, 8);
-    let file = 0, rank = 0;
-    fen.split('').forEach((char) => {
-        if (char == "/") {
-            file++;
-            rank = 0;
-        } else if (Object.values(PIECES).includes(char)) {
-            let piece = Object.keys(PIECES).find(key => PIECES[key] === char);
-            piece = parseInt(piece); // Convert piece to int from string
-            let color = (piece < 7) ? 1 : 2;
-            let tile = grid[rank][file];
-            
-            tile.piece = piece; 
-            tile.color = color;
-
-            rank++;
-        } else {
-            rank += parseInt(char);
-        }
-    });
-    return grid;
 }
