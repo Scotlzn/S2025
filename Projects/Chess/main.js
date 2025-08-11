@@ -1,4 +1,4 @@
-import { PIECES } from "./support.js";
+import { PIECES, load_assets } from "./support.js";
 import Tile from "./tile.js";
 import ValidMovesManager from "./valid_moves.js";
 import FENManager from "./fen.js";
@@ -9,8 +9,14 @@ var turn_ui = document.getElementById("turn_ui");
 var step_button = document.getElementById("step_button");
 var reset_button = document.getElementById("reset_button");
 var flip_button = document.getElementById("flip_button");
+var back_button = document.getElementById("back_button");
 var import_button = document.getElementById("import_button");
 var export_button = document.getElementById("export_button");
+var image_button = document.getElementById("image_button");
+var valid_button = document.getElementById("valid_button");
+
+const move_sound = new Audio('./audio/move.mp3');
+const capture_sound = new Audio('./audio/capture.mp3');
 
 class Main {
     constructor() {
@@ -34,12 +40,22 @@ class Main {
         this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
 
-        // -------------------TEXT ---------------
+        // --------------- TEXT ---------------
         this.ctx.imageSmoothingEnabled = false;
         this.ctx.font = `bold 40px sans-serif`;
         this.ctx.fillStyle = 'black';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
+
+        // --------------- IMAGE --------------
+        this.IMAGE_SCALE = 0.75;
+        this.IMAGE_WIDTH = 128 * this.IMAGE_SCALE;
+        this.IMAGE_HEIGHT = 128 * this.IMAGE_SCALE;
+        this.IMAGE_OFFSETX = (this.TILE_SIZE - this.IMAGE_WIDTH) * 0.5;
+        this.IMAGE_OFFSETY = (this.TILE_SIZE - this.IMAGE_HEIGHT) * 0.5;
+
+        this.ctx.imageSmoothingEnabled = true;      
+        this.ctx.imageSmoothingQuality = "high";     
 
         this.VMM = new ValidMovesManager(this);
         this.FEN = new FENManager(this);
@@ -52,7 +68,9 @@ class Main {
         this.last_move = undefined;
         this.turn = 1;
 
-        this.loaded_en_passent;
+        this.show_images = true;
+        this.show_valid_moves = true;
+        this.images = [];
         this.moves = 0; // Total full moves (after black moves)
         this.half_moves_since_last_action = 0; // capture / pawn advance
 
@@ -63,7 +81,9 @@ class Main {
         this.player1 = 0;
         this.player2 = 0;
 
-        this.grid = this.FEN.loadFEN('4n3/4kr1P/1PKpp2P/2p5/2np1b2/3P2pR/8/8 w - - 0 1');
+        this.loaded_FEN = '4n3/4kr1P/1PKpp2P/2p5/2np1b2/3P2pR/8/8 w - - 0 1';
+        this.grid = this.FEN.loadFEN(this.loaded_FEN);
+        this.history = [this.loaded_FEN];
     }
 
     handleMouseMove(event) {
@@ -106,13 +126,14 @@ class Main {
         let color = (tile.piece < 7) ? 1 : 2;
         this.overlay.color = color;
 
-        // Remove tile in place
-        tile.piece = 0;
-        tile.moves = 0;
-
         // Find valid moves
         const piece = this.overlay.piece % 6 || 6;
-        this.valid_moves = this.VMM.validMovesPiece(piece, this.mouse.tileX, this.mouse.tileY, false, false);
+        this.valid_moves = this.VMM.validMovesPiece(piece, this.mouse.tileX, this.mouse.tileY, true, false, false);
+
+        // Remove tile in place
+        tile.piece = 0;
+        tile.color = 0;
+        tile.moves = 0;
 
         this.render();
     }
@@ -144,7 +165,7 @@ class Main {
 
         // ----------- Check and checkmate -----------
         this.check = false;
-        const all_legal_moves = this.VMM.getAllValidTiles(tile.color, true, true);
+        const all_legal_moves = this.VMM.getAllValidTiles(tile.color, false, true, false); // Only looking for king
 
         // Find opponents king
         const piece_id = (tile.color == 1) ? 12 : 6;
@@ -198,12 +219,22 @@ class Main {
             this.half_moves_since_last_action++;
             if (isCapture || isPawn) this.half_moves_since_last_action = 0;
 
+            if (isCapture) {
+                capture_sound.currentTime = 0;
+                capture_sound.play();
+                this.last_move = undefined;
+            } else {
+                move_sound.currentTime = 0;
+                move_sound.play();
+            }
+
             if (this.turn == 2) {
                 this.moves++; // Increase total moves
             }
 
             this.VMM.en_passant_tile = undefined;
             this.switch_turn();
+            this.history.push(this.FEN.createFEN());
         }
 
         // Remove overlay
@@ -286,6 +317,8 @@ class Main {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         // Render board
+        this.ctx.save();
+        this.ctx.scale(1, 1);
         for (let x = 0; x < this.GRID_WIDTH; x++) {
             for (let y = 0; y < this.GRID_HEIGHT; y++) {
 
@@ -296,27 +329,52 @@ class Main {
                 this.ctx.fillRect(renderX * this.TILE_SIZE, renderY * this.TILE_SIZE, this.TILE_SIZE, this.TILE_SIZE);
 
                 let tile = this.grid[x][y];
-                if (this.valid_moves.includes(tile)) {
+                if (this.show_valid_moves && this.valid_moves.includes(tile)) {
                     this.ctx.fillStyle = 'red';
                     this.ctx.fillRect(renderX * this.TILE_SIZE + this.HALF_TILE_SIZE * 0.5, renderY * this.TILE_SIZE + this.HALF_TILE_SIZE * 0.5, this.HALF_TILE_SIZE, this.HALF_TILE_SIZE);
                 }
-                if (tile.piece != 0) {
+                if (!this.show_images && tile.piece != 0) {
                     this.ctx.fillStyle = 'black';
                     this.ctx.fillText(PIECES[tile.piece], renderX * this.TILE_SIZE + this.HALF_TILE_SIZE, renderY * this.TILE_SIZE + this.HALF_TILE_SIZE);
                 }
             }
         }
+        this.ctx.restore();
+
+        // Render pieces
+        if (this.show_images) {
+            this.ctx.save();
+            for (let x = 0; x < 8; x++) {
+                for (let y = 0; y < 8; y++) {
+                    const renderX = this.flip_board ? this.GRID_WIDTH - 1 - x : x;
+                    const renderY = this.flip_board ? this.GRID_HEIGHT - 1 - y : y;
+                    let tile = this.grid[x][y];
+                    if (tile.piece != 0) {
+                        const img = this.images[tile.piece - 1];
+                        this.ctx.drawImage(img, renderX * this.TILE_SIZE + this.IMAGE_OFFSETX, renderY * this.TILE_SIZE + this.IMAGE_OFFSETY, this.IMAGE_WIDTH, this.IMAGE_HEIGHT);
+                    }   
+                }
+            }
+            this.ctx.restore();
+        }
 
         // Render overlay
         if (this.overlay.piece != 0) {
-            this.ctx.fillStyle = 'black';
-            this.ctx.fillText(PIECES[this.overlay.piece], this.overlay.x, this.overlay.y);
+            this.ctx.save();
+            if (this.show_images) {
+                this.ctx.drawImage(this.images[this.overlay.piece - 1], this.overlay.x - this.IMAGE_WIDTH * 0.5, this.overlay.y - this.IMAGE_HEIGHT * 0.5, this.IMAGE_WIDTH, this.IMAGE_HEIGHT);
+            } else {
+                this.ctx.fillStyle = 'black';
+                this.ctx.fillText(PIECES[this.overlay.piece], this.overlay.x, this.overlay.y);
+            }
+            this.ctx.restore();
         }
     }
 
-    reset(FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1') {
+    reset(FEN = this.loaded_FEN) {
         this.BOUNDING_BOX = this.canvas.getBoundingClientRect();
         this.grid = this.FEN.loadFEN(FEN);
+        this.history = [FEN]
         this.overlay = new Tile(0, 0);
         this.original_tile = [];
         this.valid_moves = [];
@@ -330,14 +388,15 @@ class Main {
         }
     }
 
-    run() {
+    run(image_data) {
+        this.images = image_data;
         this.render();
     }
 
 }
 
 let main = new Main();
-main.run();
+load_assets(main.run.bind(main));
 
 // --------------------------- UI --------------------------
 
@@ -356,14 +415,35 @@ flip_button.onclick = () => {
     main.render();
 }
 
-import_button.onclick = () => {
+image_button.onclick = () => {
+    main.show_images = !main.show_images;
+    main.render();
+}
+
+valid_button.onclick = () => {
+    main.show_valid_moves = !main.show_valid_moves;
+    main.render();
+}
+
+back_button.onclick = () => {
+    if (main.history.length > 1) {
+        const penultimate_state = main.history[main.history.length - 2];
+        main.history.pop();
+        main.reset(penultimate_state);
+        main.render();
+    }
+}
+
+import_button.onclick = () => { // New JS :O
     navigator.clipboard.readText()
         .then(text => {
             try {
                 main.reset(text);
+                import_button.textContent = 'Pasted!'
+                setTimeout(() => { import_button.textContent = 'Import FEN'; }, 3000);
             } catch (err) {
-                // Invalid FEN
-                console.log("Invalid FEN!");
+                import_button.textContent = 'Invalid!'
+                setTimeout(() => { import_button.textContent = 'Import FEN'; }, 3000);
                 main.reset();
             }
             main.render();
@@ -371,10 +451,12 @@ import_button.onclick = () => {
 }
 
 export_button.onclick = () => {
-    const exported_FEN = main.FEN.createFEN();
-    navigator.clipboard.writeText(exported_FEN)
+    navigator.clipboard.writeText(main.history[main.history.length - 1])
         .then(() => {
-            console.log("Copied!");
+            export_button.textContent = 'Copied!'
+            setTimeout(() => {
+                export_button.textContent = 'Export FEN';
+            }, 3000);
         })
 }
 

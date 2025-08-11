@@ -115,13 +115,12 @@ export default class FENManager {
         const black = (this.main.grid.flat().find(tile => (tile.color == 2 && tile.piece == 12)).moves == 0);
         if (white) fen += 'KQ';
         if (black) fen += 'kq';
+        if (!white && !black) fen += '-';
 
         // ---------- EN PASSANT ----------
         fen += ' ';
         const opponent_color = (this.main.turn == 1) ? 2 : 1;
-        this.main.mouse.down = true; // Ugly fix ._.
-        const opponent_legal_moves = this.main.VMM.findEnPassant(opponent_color);
-        this.main.mouse.down = false; // Ugly fix ._.
+        this.main.VMM.findEnPassant(opponent_color);
         if (this.main.VMM.en_passant_tile != undefined) {
             // Find new tile for capture
             const space_direction = (this.main.turn == 1) ? -1 : 1;

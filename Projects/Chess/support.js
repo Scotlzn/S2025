@@ -64,9 +64,18 @@ export function createArray2D(width, height) {
 
 
 export function load_assets(func) {
-    const img = new Image();
-    img.src = './path';
-    img.onload = function() {
-        func(img);
-    };
+    const total_images = 12;
+    const images = [];
+    let loaded_images = 0;
+    for (let image = 0; image < total_images; image++) {
+        const img = new Image();
+        img.src = `./assets/${image + 1}.png`;
+        img.onload = function() {
+            images[image] = img;
+            loaded_images++;
+            if (loaded_images == total_images) {
+                func(images);
+            }
+        };
+    }
 }
