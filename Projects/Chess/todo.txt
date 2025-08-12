@@ -1,0 +1,25 @@
+# TODO
+    - Disable Draw By Insufficient Material:
+        - Button toggles to "Enable DBIM"
+        - Actually works ._.
+    
+    - Endless button:
+        - Its just a toggle that when u are playing it doesnt stop at checkmate it just resets (to find bugs)
+        - Toggles to "Endless: ON"
+
+# Bugs
+    
+
+# Changes
+    - Faint coordinate labels
+    - Draw by insufficient material (Using FIDE rules)
+
+# Additional features
+    - Minimax AI
+    - Faint Highlight last move
+    - Visual Indicator of checkmate (faint red on lost king)
+    and stalemate (faint red on both kings)
+
+# README.md (you can have a separate one for folders)
+    - Gif of an AI vs AI game
+    - List with all the features

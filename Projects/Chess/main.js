@@ -1,4 +1,4 @@
-import { PIECES, load_assets } from "./support.js";
+import { PIECES, load_assets, REVERSED_COORDINATES, insufficientMaterialCheck } from "./support.js";
 import Tile from "./tile.js";
 import ValidMovesManager from "./valid_moves.js";
 import FENManager from "./fen.js";
@@ -15,6 +15,7 @@ var export_button = document.getElementById("export_button");
 var image_button = document.getElementById("image_button");
 var valid_button = document.getElementById("valid_button");
 var play_button = document.getElementById("play_button");
+var coord_button = document.getElementById("coord_button");
 
 const move_sound = new Audio('./audio/move.mp3');
 const capture_sound = new Audio('./audio/capture.mp3');
@@ -48,6 +49,10 @@ class Main {
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
 
+        this.COORDINATE_OFFSET_X = 15;
+        this.COORDINATE_LETTER_X = 17;
+        this.COORDINATE_NUMBER_Y = 23;
+
         // --------------- IMAGE --------------
         this.IMAGE_SCALE = 0.75;
         this.IMAGE_WIDTH = 128 * this.IMAGE_SCALE;
@@ -71,9 +76,11 @@ class Main {
 
         this.show_images = true;
         this.show_valid_moves = true;
+        this.show_coordinates = true;
         this.images = [];
         this.moves = 0; // Total full moves (after black moves)
         this.half_moves_since_last_action = 0; // capture / pawn advance
+        this.insufficient_material = [false, false];
 
         this.check = false;
         this.checkmate = false;
@@ -91,7 +98,7 @@ class Main {
         this.human_vs_human = true;
 
         // TESTING FEN: 4n3/4kr1P/1PKpp2P/2p5/2np1b2/3P2pR/8/8 w - - 0 1
-        this.loaded_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+        this.loaded_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0';
         this.grid = this.FEN.loadFEN(this.loaded_FEN);
         this.history = [this.loaded_FEN];
     }
@@ -205,7 +212,8 @@ class Main {
         const opponent_stuck = this.VMM.checkmateBlockingCheck(opponent_color);
 
         // Find all my legal moves (including my own pieces) -> only looking for opponent's king
-        const all_legal_moves = this.VMM.getAllValidTiles(tile.color, false, true, false);
+        const all_legal_moves = this.VMM.getAllValidData(tile.color, false, true, false);
+        const my_pieces = this.VMM.pieces; // For insufficient material
         this.check = false;
 
         // Find opponent's king
@@ -226,16 +234,24 @@ class Main {
         // ------------ Stalemate -----------
         // Opponent's king NOT in check and opponents pieces have no legal moves -> Stalemate
         } else if (opponent_stuck) {
-            this.stalemate = true;
-            turn_ui.textContent = "Stalemate!"
+            this.draw();
             console.log("Stalemate by no avaliable moves!")
         }
 
         // 50 move rule
         if (this.half_moves_since_last_action > 50) {
-            this.stalemate = true;
-            turn_ui.textContent = "Stalemate!"
+            this.draw();
             console.log("Stalemate by the 50 move rule!");
+        }
+
+        // Insufficient material
+        if (insufficientMaterialCheck(my_pieces)) {
+            this.insufficient_material[this.turn - 1] = true;
+            console.log(this.insufficient_material);
+            if (this.turn == 2 && this.insufficient_material[0] == true) {
+                this.draw();
+                console.log("Stalemate by insufficient material");
+            }
         }
 
         // Promoted pawns only need to search for check, mate, and stalemate
@@ -278,9 +294,10 @@ class Main {
         this.half_moves_since_last_action++;
         if (isCapture || isPawn) this.half_moves_since_last_action = 0;
 
-        // Increase total move count after blacks move
+        // After blacks move
         if (this.turn == 2) {
             this.moves++;
+            this.insufficient_material = [false, false]; // Reset as there is
         }
 
         const playSound = (!this.playing);
@@ -302,6 +319,11 @@ class Main {
         if (this.promoting_pawn != undefined) return;
 
         this.history.push(this.FEN.createFEN());
+    }
+
+    draw() {
+        this.stalemate = true;
+        turn_ui.textContent = "Stalemate!"
     }
 
     switch_turn() {
@@ -381,15 +403,34 @@ class Main {
                 const renderX = this.flip_board ? this.GRID_WIDTH - 1 - x : x;
                 const renderY = this.flip_board ? this.GRID_HEIGHT - 1 - y : y;
 
+                // Background
                 this.ctx.fillStyle = (renderX + renderY) % 2 === 0 ? "#ddd" : "#bbb";
                 this.ctx.fillRect(renderX * this.TILE_SIZE, renderY * this.TILE_SIZE, this.TILE_SIZE, this.TILE_SIZE);
 
+                // Coordinate labels
+                if (this.show_coordinates) {
+                    this.ctx.font = `bold 30px sans-serif`;
+                    this.ctx.fillStyle = (renderX + renderY) % 2 === 0 ? "#bbb" : "#ddd";
+                    // a-h
+                    if (renderY == 7) {
+                        this.ctx.fillText(REVERSED_COORDINATES[renderX].toString(), renderX * this.TILE_SIZE + this.TILE_SIZE - this.COORDINATE_OFFSET_X, renderY * this.TILE_SIZE + this.TILE_SIZE - this.COORDINATE_LETTER_X);
+                    }
+                    // 1-8
+                    if (renderX == 0) {
+                        this.ctx.fillText((8 - renderY).toString(), renderX * this.TILE_SIZE + this.COORDINATE_OFFSET_X, renderY * this.TILE_SIZE + this.COORDINATE_NUMBER_Y);
+                    }
+                }
+
+                // Valid tiles
                 let tile = this.grid[x][y];
                 if (this.show_valid_moves && this.valid_moves.includes(tile)) {
                     this.ctx.fillStyle = 'red';
                     this.ctx.fillRect(renderX * this.TILE_SIZE + this.HALF_TILE_SIZE * 0.5, renderY * this.TILE_SIZE + this.HALF_TILE_SIZE * 0.5, this.HALF_TILE_SIZE, this.HALF_TILE_SIZE);
                 }
+
+                // Text pieces
                 if (!this.show_images && tile.piece != 0) {
+                    this.ctx.font = `bold 40px sans-serif`;
                     this.ctx.fillStyle = 'black';
                     this.ctx.fillText(PIECES[tile.piece], renderX * this.TILE_SIZE + this.HALF_TILE_SIZE, renderY * this.TILE_SIZE + this.HALF_TILE_SIZE);
                 }
@@ -397,7 +438,7 @@ class Main {
         }
         this.ctx.restore();
 
-        // Render pieces
+        // Render image pieces
         if (this.show_images) {
             this.ctx.save();
             for (let x = 0; x < 8; x++) {
@@ -510,6 +551,11 @@ image_button.onclick = () => {
 
 valid_button.onclick = () => {
     main.show_valid_moves = !main.show_valid_moves;
+    main.render();
+}
+
+coord_button.onclick = () => {
+    main.show_coordinates = !main.show_coordinates;
     main.render();
 }
 
