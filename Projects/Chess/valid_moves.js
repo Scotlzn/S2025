@@ -4,7 +4,6 @@ export default class ValidMovesManager {
     constructor(main) {
         this.main = main;
         this.en_passant_tile = undefined;
-        this.pieces = {};
     }
 
     movingIntoCheck(original_tile, new_tile) {
@@ -68,27 +67,6 @@ export default class ValidMovesManager {
                 this.validMovesPawn(x, y, false, false, false);
             }
         }
-    }
-
-    getAllValidData(color, special, neutral, skipCheck) {
-        let legal_moves = new Set();
-        this.pieces = {};
-        for (let x = 0; x < 8; x++) {
-            for (let y = 0; y < 8; y++) {
-                const tile = this.main.grid[x][y];
-                if (tile.piece == 0) continue;
-                if (tile.color != color) continue;
-                const piece = tile.piece % 6 || 6;
-                if (!(piece in this.pieces)) {
-                    this.pieces[piece] = 1;
-                } else this.pieces[piece] += 1;
-                let valid_moves = this.validMovesPiece(piece, x, y, special, neutral, skipCheck);
-                for (const move of valid_moves) {
-                    legal_moves.add(move);
-                }
-            }
-        }
-        return legal_moves;
     }
 
     getAllValidTiles(color, special, neutral, skipCheck) {

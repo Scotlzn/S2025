@@ -19,9 +19,16 @@ export const PIECES = {
     12: 'k'
 }
 
-export const COORDINATES = {"a": 0, "b": 1, "c": 2, "d": 3, "e": 4, "f": 5, "g": 6, "h": 7};
-
-export const REVERSED_COORDINATES = {0: "a", 1: "b", 2: "c", 3: "d", 4: "e", 5: "f", 6: "g", 7: "h"};
+export const COORDINATES = {
+    "a": 0,
+    "b": 1,
+    "c": 2,
+    "d": 3,
+    "e": 4,
+    "f": 5,
+    "g": 6,
+    "h": 7
+}
 
 export function isUpper(str) {
     return str === str.toUpperCase() && str !== str.toLowerCase();
@@ -71,22 +78,4 @@ export function load_assets(func) {
             }
         };
     }
-}
-
-export function insufficientMaterialCheck(pieces) {
-    // Using FIDE rules
-    const number_of_pieces = Object.keys(pieces).length;
-    
-    // Lone king
-    if (number_of_pieces == 1 && pieces[6] == 1) return true;
-
-    // No pawns
-    if (!pieces.hasOwnProperty(1)) {
-        // King and bishop
-        if (number_of_pieces == 2 && pieces.hasOwnProperty(6) && pieces.hasOwnProperty(3) && pieces[3] == 1) return true;
-
-        // King and knight
-        if (number_of_pieces == 2 && pieces.hasOwnProperty(6) && pieces.hasOwnProperty(2) && pieces[2] == 1) return true;
-    }
-    return false;
 }
