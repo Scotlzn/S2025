@@ -14,6 +14,7 @@ var import_button = document.getElementById("import_button");
 var export_button = document.getElementById("export_button");
 var image_button = document.getElementById("image_button");
 var valid_button = document.getElementById("valid_button");
+var play_button = document.getElementById("play_button");
 
 const move_sound = new Audio('./audio/move.mp3');
 const capture_sound = new Audio('./audio/capture.mp3');
@@ -75,6 +76,8 @@ class Main {
         this.half_moves_since_last_action = 0; // capture / pawn advance
 
         this.check = false;
+        this.checkmate = false;
+        this.stalemate = false;
         this.flip_board = false;
 
         // 0 = Human, 1 = Random
@@ -104,6 +107,7 @@ class Main {
     handleMouseDown(event) {
         if (this.player1 != 0 && this.player2 != 0) return;
         if (this.promoting_pawn != undefined) return;
+        if (this.checkmate) return;
 
         let tile = this.grid[this.mouse.tileX][this.mouse.tileY];
         if (this.overlay.piece == 0 && tile.piece == 0) return;
@@ -161,6 +165,30 @@ class Main {
         tile.color = this.overlay.color;
         tile.moves = this.overlay.moves;
 
+        this.place_tile(tile, false, isCapture, sameTile, false);
+
+        // Remove overlay
+        this.overlay.piece = 0;
+        this.overlay.moves = 0;
+        this.overlay.castled = false;
+
+        this.valid_moves = [];
+
+        // AI move -> only if promotion isn't happening
+        if (this.promoting_pawn == undefined && !this.checkmate) {
+            if (this.player1 != 0 || this.player2 != 0) {
+                this.step();
+            }
+        }
+
+        this.render();
+    }
+
+    place_tile(tile, AIMove = false, isCapture = false, sameTile = false, promoted = false) {
+
+        // Dont procede if the tile hasn't changed position
+        if (sameTile) return;
+
         const isPawn = [1, 7].includes(tile.piece);
 
         // ----------- Check and checkmate -----------
@@ -180,16 +208,19 @@ class Main {
             const opponent_color = (tile.color == 1) ? 2 : 1;
             const checkmate = this.VMM.checkmateBlockingCheck(opponent_color);
             if (checkmate) {
+                this.checkmate = true;
                 turn_ui.textContent = "Checkmate!";
             }
         }
+
+        if (promoted) return;
 
         // ----------- Castling -----------
         // Piece is a king, that hasn't moved and castling is an option
         if ([6, 12].includes(tile.piece) && (tile.moves == 0) && [1, 6].includes(tile.x)) {
             const y_level = (tile.color == 1) ? 7 : 0;
-            const newX = (this.mouse.tileX < 4) ? 2 : 5;
-            const rookX = (this.mouse.tileX < 4) ? 0 : 7;
+            const newX = (tile.x < 4) ? 2 : 5;
+            const rookX = (tile.x < 4) ? 0 : 7;
             this.grid[newX][y_level].piece = (tile.color == 1) ? 4 : 10;
             this.grid[rookX][y_level].piece = 0;
         }
@@ -197,7 +228,7 @@ class Main {
         // ----------- En passant ---------
         if (isPawn && this.VMM.en_passant_tile != undefined) {
             const new_tile_direction = (tile.color == 1) ? -1 : 1;
-            if (this.VMM.en_passant_tile.x == this.mouse.tileX && (this.VMM.en_passant_tile.y + new_tile_direction) == this.mouse.tileY) {
+            if (this.VMM.en_passant_tile.x == tile.x && (this.VMM.en_passant_tile.y + new_tile_direction) == tile.y) {
                 this.VMM.en_passant_tile.piece = 0;
                 isCapture = true;
             }
@@ -206,50 +237,35 @@ class Main {
         // ---------- Pawn promotion ---------
         if (isPawn) {
             const promotion_file = (tile.color == 1) ? 0 : 7;
-            if (this.mouse.tileY == promotion_file) {
+            if (tile.y == promotion_file) {
                 this.promoting_pawn = tile;
-                promotion_menu.style.display = "block";
+                if (!AIMove) promotion_menu.style.display = "block";
             }
         }
 
-        if (!sameTile) {
-            this.last_move = tile;
-            tile.moves++;
+        tile.moves++;
+        this.last_move = tile;
 
-            this.half_moves_since_last_action++;
-            if (isCapture || isPawn) this.half_moves_since_last_action = 0;
+        this.half_moves_since_last_action++;
+        if (isCapture || isPawn) this.half_moves_since_last_action = 0;
 
-            if (isCapture) {
-                capture_sound.currentTime = 0;
-                capture_sound.play();
-                this.last_move = undefined;
-            } else {
-                move_sound.currentTime = 0;
-                move_sound.play();
-            }
-
-            if (this.turn == 2) {
-                this.moves++; // Increase total moves
-            }
-
-            this.VMM.en_passant_tile = undefined;
-            this.switch_turn();
-            this.history.push(this.FEN.createFEN());
+        // Increase total move count after blacks move
+        if (this.turn == 2) {
+            this.moves++;
         }
 
-        // Remove overlay
-        this.overlay.piece = 0;
-        this.overlay.moves = 0;
-        this.overlay.castled = false;
-
-        this.valid_moves = [];
-
-        // AI move
-        if (this.player1 != 0 || this.player2 != 0) {
-            this.step();
+        if (isCapture) {
+            capture_sound.currentTime = 0;
+            capture_sound.play();
+            this.last_move = undefined; // To prevent en passant
+        } else {
+            move_sound.currentTime = 0;
+            move_sound.play();
         }
 
-        this.render();
+        this.VMM.en_passant_tile = undefined;
+        this.switch_turn();
+        this.history.push(this.FEN.createFEN());
     }
 
     switch_turn() {
@@ -294,6 +310,8 @@ class Main {
         const selected_tile_position = ai_move[0].split(","); 
         const selected_tile = this.grid[selected_tile_position[0]][selected_tile_position[1]], selected_move = ai_move[1];
         
+        const isCapture = (selected_move.piece != 0);
+
         // Place new tile
         selected_move.piece = selected_tile.piece;
         selected_move.color = selected_tile.color;
@@ -302,15 +320,17 @@ class Main {
         // Remove old tile
         selected_tile.piece = 0;
 
-        this.last_move = selected_move;
+        this.place_tile(selected_move, true, isCapture, false, false);
 
-        // Increment move count if ai is black
-        this.half_moves_since_last_action++;
-        if (this.turn == 2) {
-            this.moves++;
+        // Handle promotions
+        if (this.promoting_pawn != undefined) {
+            const colorMultiplier = (this.turn == 2) ? 0 : 1;
+            // AI always promotes to queen (id=5) - subject to change
+            const piece = (5) + 6 * colorMultiplier;
+            this.promoting_pawn.piece = piece;
+            this.place_tile(this.promoting_pawn, true, false, false, true);
+            this.promoting_pawn = undefined;
         }
-
-        this.switch_turn();
     }
 
     render() {
@@ -371,20 +391,28 @@ class Main {
         }
     }
 
-    reset(FEN = this.loaded_FEN) {
+    reset(fullReset = false, FEN = this.loaded_FEN) {
         this.BOUNDING_BOX = this.canvas.getBoundingClientRect();
+
+        this.check = false;
+        this.checkmate = false;
+        this.stalemate = false;
+
         this.grid = this.FEN.loadFEN(FEN);
-        this.history = [FEN]
         this.overlay = new Tile(0, 0);
         this.original_tile = [];
         this.valid_moves = [];
-        this.promoting_pawn = undefined;
         this.VMM.en_passant_tile = undefined;
         this.flip_board = false;
 
-        // If player 1 is AI, the AI plays its first move
-        if (this.player1 != 0) {
-            this.step();
+        this.promoting_pawn = undefined;
+        promotion_menu.style.display = "none";
+
+        if (fullReset) {
+            this.history = [FEN];
+            if (this.player1 != 0) {
+                this.step();
+            }
         }
     }
 
@@ -406,7 +434,7 @@ step_button.onclick = () => {
 }
 
 reset_button.onclick = () => {
-    main.reset();
+    main.reset(true);
     main.render();
 }
 
@@ -429,7 +457,7 @@ back_button.onclick = () => {
     if (main.history.length > 1) {
         const penultimate_state = main.history[main.history.length - 2];
         main.history.pop();
-        main.reset(penultimate_state);
+        main.reset(false, penultimate_state);
         main.render();
     }
 }
@@ -438,13 +466,13 @@ import_button.onclick = () => { // New JS :O
     navigator.clipboard.readText()
         .then(text => {
             try {
-                main.reset(text);
+                main.reset(true, text);
                 import_button.textContent = 'Pasted!'
                 setTimeout(() => { import_button.textContent = 'Import FEN'; }, 3000);
             } catch (err) {
                 import_button.textContent = 'Invalid!'
                 setTimeout(() => { import_button.textContent = 'Import FEN'; }, 3000);
-                main.reset();
+                main.reset(true);
             }
             main.render();
         })
@@ -496,7 +524,7 @@ for (let button = 0; button < 2; button++) {
         main.player1 = button;
         player1Button.textContent = PLAYER_OPTIONS[button];
         dropdowns[0].classList.remove('show');
-        main.reset();
+        main.reset(true);
         main.render();
     }
 }
@@ -511,7 +539,7 @@ for (let button = 0; button < 2; button++) {
         main.player2 = button;
         player2Button.textContent = PLAYER_OPTIONS[button];
         dropdowns[1].classList.remove('show');
-        main.reset();
+        main.reset(true);
         main.render();
     }
 }
@@ -519,9 +547,9 @@ for (let button = 0; button < 2; button++) {
 // --------------- Promotions -----------------
 function promote_pawn(piece) {
     main.promoting_pawn.piece = piece;
+    main.place_tile(main.promoting_pawn, false, false, false, true);
     main.promoting_pawn = undefined;
     promotion_menu.style.display = "none";
-    main.render();
 }
 
 const PROMOTIONS = {"Queen": 5,"Rook": 4,"Bishop": 3,"Knight": 2}
@@ -534,6 +562,11 @@ for (let button = 0; button < 4; button++) {
         const piece = PROMOTIONS[button_object.textContent] + 6 * colorMultiplier;
         promote_pawn(piece);
         dropdowns[2].classList.remove('show'); // Remove dropdown
+        
+        const aiActive = (main.player1 != 0 || main.player2 != 0);
+        if (aiActive && !main.checkmate) main.step();
+
+        main.render();
     }
 }
 console.log("Running!")

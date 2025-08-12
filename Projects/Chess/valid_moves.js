@@ -86,7 +86,7 @@ export default class ValidMovesManager {
         return legal_moves;
     }
 
-    checkmateBlockingCheck(opponent_color) { // FIX!!!
+    checkmateBlockingCheck(opponent_color) {
         let opponent_legal_moves = new Set();
         for (let x = 0; x < 8; x++) {
             for (let y = 0; y < 8; y++) {
