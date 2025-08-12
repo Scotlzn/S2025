@@ -14,3 +14,7 @@ canvas {
 #promotion_menu {
     display: none;
 }
+
+#turn_ui {
+    width: 96px;
+}

@@ -84,7 +84,14 @@ class Main {
         this.player1 = 0;
         this.player2 = 0;
 
-        this.loaded_FEN = '4n3/4kr1P/1PKpp2P/2p5/2np1b2/3P2pR/8/8 w - - 0 1';
+        this.PLAY_INTERVAL_ID;
+        this.playing = false;
+        this.prevent_mouse_input = false;
+        this.ai_vs_ai = false;
+        this.human_vs_human = true;
+
+        // TESTING FEN: 4n3/4kr1P/1PKpp2P/2p5/2np1b2/3P2pR/8/8 w - - 0 1
+        this.loaded_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
         this.grid = this.FEN.loadFEN(this.loaded_FEN);
         this.history = [this.loaded_FEN];
     }
@@ -108,6 +115,7 @@ class Main {
         if (this.player1 != 0 && this.player2 != 0) return;
         if (this.promoting_pawn != undefined) return;
         if (this.checkmate) return;
+        if (this.prevent_mouse_input) return;
 
         let tile = this.grid[this.mouse.tileX][this.mouse.tileY];
         if (this.overlay.piece == 0 && tile.piece == 0) return;
@@ -175,7 +183,7 @@ class Main {
         this.valid_moves = [];
 
         // AI move -> only if promotion isn't happening
-        if (this.promoting_pawn == undefined && !this.checkmate) {
+        if (this.promoting_pawn == undefined && !this.checkmate && !this.stalemate) {
             if (this.player1 != 0 || this.player2 != 0) {
                 this.step();
             }
@@ -191,29 +199,50 @@ class Main {
 
         const isPawn = [1, 7].includes(tile.piece);
 
-        // ----------- Check and checkmate -----------
-        this.check = false;
-        const all_legal_moves = this.VMM.getAllValidTiles(tile.color, false, true, false); // Only looking for king
+        // -------------- Check, checkmate and stalemate ---------------
+        // Does my opponent have any legal moves?
+        const opponent_color = (tile.color == 1) ? 2 : 1;
+        const opponent_stuck = this.VMM.checkmateBlockingCheck(opponent_color);
 
-        // Find opponents king
+        // Find all my legal moves (including my own pieces) -> only looking for opponent's king
+        const all_legal_moves = this.VMM.getAllValidTiles(tile.color, false, true, false);
+        this.check = false;
+
+        // Find opponent's king
         const piece_id = (tile.color == 1) ? 12 : 6;
-        // [0] Because filter returns an array
         const opponent_king = this.grid.flat().find(tile => tile.piece == piece_id);
-        // Opponents king is a valid move?
+        // Opponents king is a legal move? -> In check
         if (all_legal_moves.has(opponent_king)) {
             this.check = true;
             turn_ui.textContent = "Check!";
+
             // ------------ Mate ------------
-            // If all the opponents pieces have no legal moves
-            const opponent_color = (tile.color == 1) ? 2 : 1;
-            const checkmate = this.VMM.checkmateBlockingCheck(opponent_color);
-            if (checkmate) {
+            // In check AND all the opponents pieces have no legal moves -> Mate
+            if (opponent_stuck) {
                 this.checkmate = true;
                 turn_ui.textContent = "Checkmate!";
             }
+        
+        // ------------ Stalemate -----------
+        // Opponent's king NOT in check and opponents pieces have no legal moves -> Stalemate
+        } else if (opponent_stuck) {
+            this.stalemate = true;
+            turn_ui.textContent = "Stalemate!"
+            console.log("Stalemate by no avaliable moves!")
         }
 
-        if (promoted) return;
+        // 50 move rule
+        if (this.half_moves_since_last_action > 50) {
+            this.stalemate = true;
+            turn_ui.textContent = "Stalemate!"
+            console.log("Stalemate by the 50 move rule!");
+        }
+
+        // Promoted pawns only need to search for check, mate, and stalemate
+        if (promoted) { 
+            this.history.push(this.FEN.createFEN());
+            return;
+        }
 
         // ----------- Castling -----------
         // Piece is a king, that hasn't moved and castling is an option
@@ -254,30 +283,37 @@ class Main {
             this.moves++;
         }
 
+        const playSound = (!this.playing);
         if (isCapture) {
-            capture_sound.currentTime = 0;
-            capture_sound.play();
             this.last_move = undefined; // To prevent en passant
-        } else {
+            if (playSound) {
+                capture_sound.currentTime = 0;
+                capture_sound.play();
+            }
+        } else if (playSound) {
             move_sound.currentTime = 0;
             move_sound.play();
         }
 
         this.VMM.en_passant_tile = undefined;
         this.switch_turn();
+
+        // Don't add unpromoted pawn to history -> instead this occurs after promotion
+        if (this.promoting_pawn != undefined) return;
+
         this.history.push(this.FEN.createFEN());
     }
 
     switch_turn() {
         this.turn = (this.turn == 1) ? 2 : 1; 
-        if (!this.check) {
+        if (!this.check && !this.stalemate) {
             turn_ui.textContent = (this.turn == 1) ? "Turn: White" : "Turn: Black";
         }
     }
 
     set_turn(t) {
         this.turn = t;
-        if (!this.check) {
+        if (!this.check && !this.stalemate) {
             turn_ui.textContent = (this.turn == 1) ? "Turn: White" : "Turn: Black";
         }
     }
@@ -404,16 +440,38 @@ class Main {
         this.valid_moves = [];
         this.VMM.en_passant_tile = undefined;
         this.flip_board = false;
+        this.prevent_mouse_input = false;
 
         this.promoting_pawn = undefined;
         promotion_menu.style.display = "none";
 
+        this.ai_vs_ai = false;
+        this.human_vs_human = false;
+        if (this.player1 == 0 && this.player2 == 0) this.human_vs_human = true;
+        if (this.player1 != 0 && this.player2 != 0) this.ai_vs_ai = true;
+
         if (fullReset) {
             this.history = [FEN];
-            if (this.player1 != 0) {
+            this.pause();
+            if (this.player1 != 0 && !this.ai_vs_ai) {
                 this.step();
             }
         }
+    }
+
+    play() {
+        if (this.checkmate || this.stalemate) {
+            this.pause();
+            return;
+        }
+        this.step();
+        this.render();
+    }
+
+    pause() {
+        play_button.textContent = 'Play';
+        this.playing = false;
+        clearInterval(this.PLAY_INTERVAL_ID);
     }
 
     run(image_data) {
@@ -429,6 +487,8 @@ load_assets(main.run.bind(main));
 // --------------------------- UI --------------------------
 
 step_button.onclick = () => {
+    if (main.checkmate || main.stalemate) return;
+    main.prevent_mouse_input = false;
     main.step();
     main.render();
 }
@@ -458,7 +518,28 @@ back_button.onclick = () => {
         const penultimate_state = main.history[main.history.length - 2];
         main.history.pop();
         main.reset(false, penultimate_state);
+
+        // AI move? -> Disable mouse controls and force step to be pressed
+        const AIMove = ((main.player1 != 0 && main.turn == 1) || (main.player2 != 0 && main.turn == 2));
+        if (AIMove) main.prevent_mouse_input = true;
+
+        main.mouse.down = false; // Prevent bug as the overlay is removed
+
         main.render();
+    }
+}
+
+play_button.onclick = () => {
+    if (main.player1 == 0 || main.player2 == 0) return;
+    if (main.checkmate || main.stalemate) return;
+    main.playing = !main.playing;
+    if (main.playing) {
+        play_button.textContent = 'Pause';
+        main.PLAY_INTERVAL_ID = setInterval(() => {
+            main.play(); 
+        }, 20);
+    } else {
+        main.pause();
     }
 }
 
@@ -564,7 +645,7 @@ for (let button = 0; button < 4; button++) {
         dropdowns[2].classList.remove('show'); // Remove dropdown
         
         const aiActive = (main.player1 != 0 || main.player2 != 0);
-        if (aiActive && !main.checkmate) main.step();
+        if (aiActive && !main.checkmate && !main.stalemate) main.step();
 
         main.render();
     }

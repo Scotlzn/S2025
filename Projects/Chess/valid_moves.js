@@ -87,7 +87,7 @@ export default class ValidMovesManager {
     }
 
     checkmateBlockingCheck(opponent_color) {
-        let opponent_legal_moves = new Set();
+        // Finding all the moves to get me out of check
         for (let x = 0; x < 8; x++) {
             for (let y = 0; y < 8; y++) {
                 const tile = this.main.grid[x][y];
@@ -95,16 +95,12 @@ export default class ValidMovesManager {
                 if (tile.color != opponent_color) continue;
                 const piece = tile.piece % 6 || 6;
                 let valid_moves = this.validMovesPiece(piece, x, y, false, false, false);
-                for (const move of valid_moves) {
-                    opponent_legal_moves.add(move);
+                if (valid_moves.length != 0) {
+                    return false; // There is a move out of check
                 }
             }
         }
-        // Checkmate
-        if (opponent_legal_moves.size == 0) {
-            return true;
-        }
-        return false;
+        return true; // No move out of check -> checkmate
     }
 
     validMovesPiece(piece, tileX, tileY, special, neutral, skipCheck) {
