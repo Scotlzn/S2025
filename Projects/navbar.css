@@ -1,0 +1,141 @@
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: white;
+    overflow: hidden;
+    margin: 0;
+}
+
+
+.navbar {
+    overflow: hidden;
+    background-color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 60px;
+}
+
+.navbar a, .navbar p, .navbar button {
+    float: left;
+    display: block;
+    color: white;
+    text-align: center;
+    padding: 18px 20px;
+    text-decoration: none;
+    font-size: 18px;
+    user-select: none;
+}
+
+.navbar button {
+    background-color: #333;
+    cursor: pointer;
+    outline: none;
+    border: none;
+    background: none;
+}
+
+.navbar a:hover, .dropdown .dropbtn:hover, .navbar button:hover{
+    background-color: #ddd;
+    color: black;
+}
+
+.dropdown {
+    float: left;
+    overflow: hidden;
+}
+
+.dropdown .dropbtn {
+    font-size: 18px;
+    border: none;
+    outline: none;
+    color: white;
+    padding: 18px 20px;
+    background-color: inherit;
+    font-family: inherit;
+    margin: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.dropdown .dropbtn::after {
+    content: '\25BC';
+    margin-left: 8px;
+    font-size: 12px;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    max-height: 200px;
+    top: 58px;
+    overflow-y: auto;
+    outline-style: auto;
+    outline-style: solid;
+    outline-color: #333;
+    outline-width: 3px;
+}
+
+#nested {
+    overflow-y: visible;
+}
+
+.dropdown-content a, .dropdown-content button, .dropdown-content p {
+    float: none;
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    text-align: left;
+}
+
+.dropdown-content button {
+    width: 100%;
+}
+
+.dropdown-content p {
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+.dropdown-content a:hover {
+    background-color: #ddd;
+}
+
+.dropdown.show .dropdown-content {
+    display: block;
+}
+
+.dropdown-content input, .arrow {
+    position: absolute;
+    display: inline-block;
+    right: 5%;
+}
+
+.submenu {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 100%;
+    background-color: #f9f9f9;
+    width: 200px;
+    z-index: 2;
+    overflow-y: auto;
+    max-height: 200px;
+}
+
+.submenu button {
+    width: 100%;
+    text-align: left;
+    padding: 12px 16px;
+    border: none;
+    background: none;
+}
+
+.submenu-parent:hover .submenu {
+    display: block;
+}
