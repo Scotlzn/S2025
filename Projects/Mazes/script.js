@@ -304,7 +304,6 @@ playing = false;
 intervalId = 0;
 
 function play() {
-    // ----- Pause if maze fully complete ------
     step();
     render();
 }
@@ -316,6 +315,7 @@ function pause() {
 }
 
 play_button.onclick = function() {
+    if (complete) return;
     playing = !playing;
     if (playing) {
         play_button.textContent = 'Pause';
