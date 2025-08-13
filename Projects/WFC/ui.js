@@ -10,6 +10,8 @@ export default class UIManager {
         this.back_button = document.getElementById("back_button");
         this.backtracking_button = document.getElementById("backtracking_button");
 
+        this.speed_input = document.getElementById("speed_input");
+
         // Using () => {} because "this." doesnt work otherwise
         this.step_button.onclick = () => {
             main.step();
@@ -44,15 +46,23 @@ export default class UIManager {
             if (main.error_found && main.backtracking_manager.mode != 0) main.backtracking_manager.active = true;
         }
 
+        this.play_speed = 50;
+        this.speed_input.addEventListener("input", () => {
+            let value = parseInt(this.speed_input.value, 10);
+            if (isNaN(value)) return;
+            value = Math.max(value, 1);
+            value = Math.min(value, 100);
+            this.play_speed = value;
+        });
+
         this.play_button.onclick = () => {
             if (main.complete && !main.backtracking_manager.active) return;
             main.playing = !main.playing;
-            if (main.playing) {
-                const speed = parseInt(document.getElementById("speed_input").value, 10);
+            if (main.playing) { // Base 10
                 this.play_button.textContent = 'Pause';
                 main.intervalId = this.main.intervalId = setInterval(() => {
                     this.main.play(); 
-                }, speed);
+                }, this.play_speed);
             } else main.pause();
         }
     }

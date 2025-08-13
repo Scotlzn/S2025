@@ -3,9 +3,19 @@
     <head>
         <title>Wave function collapse</title>
         <link rel="stylesheet" href="./style.css">
+        <link rel="stylesheet" href="./navbar.css">
         <script defer src="main.js" type="module"></script>
     </head>
     <body>
+        <div class="navbar">
+            <a href="../../main.html">Wave function collapse</a>
+            <div class="play_speed">
+                <span>Play speed:</span> <input type="number" min="1" max="100" value="50" id="speed_input">
+            </div>
+            <div class="grid_size">
+                <span>Grid size:</span> <input type="number" min="3" max="50" value="30" id="grid_input">
+            </div>
+        </div>
         <div class="WFC">
             <canvas id="canvas1" width="800" height="800">Canvas didn't load</canvas>
             <div class="WFC_buttons">
@@ -18,12 +28,6 @@
                 <button id="entropy_button">Show entropy <br>OFF</button>
                 <button id="dataset_button">Dataset: Circuit</button>
             </div>
-        </div>
-        <div class="play_speed">
-            Play speed: <input type="number" min="1" max="100" value="50" id="speed_input">
-        </div>
-        <div class="grid_size">
-            Grid size: &nbsp; &nbsp; <input type="number" min="3" max="50" value="30" id="grid_input">
         </div>
     </body>
 </html>

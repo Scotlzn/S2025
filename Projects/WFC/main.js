@@ -4,14 +4,16 @@ import {
 import BacktrackingManager from "./backtracking.js";
 import UIManager from "./ui.js";
 
+var grid_input = document.getElementById("grid_input");
+
 class Main {
 
-    constructor(tile_data, image_data) {
+    constructor(tile_data, image_data, size) {
 
         this.canvas = document.getElementById("canvas1");
         this.ctx = this.canvas.getContext('2d');
  
-        this.GRID_SIZE = parseInt(document.getElementById("grid_input").value, 10);
+        this.GRID_SIZE = size;
         this.IMG_SIZE = tile_data["image_size"]; // In pixels (56)
 
         // Avoids white lines between tiles 
@@ -245,10 +247,11 @@ var data = load_all_data();
 var image_data = [];
 var main;
 var dataset = 0;
+var grid_size = 30;
 load_assets(data, run);
 
 function initialise_main() {
-    main = new Main(data[dataset], image_data[dataset]);
+    main = new Main(data[dataset], image_data[dataset], grid_size);
     main.run();
 }
 
@@ -269,3 +272,13 @@ dataset_button.onclick = () => {
     initialise_main();
     main.render();
 }
+
+grid_input.addEventListener("input", () => {
+    let value = parseInt(grid_input.value, 10);
+    if (isNaN(value)) return;
+    value = Math.min(value, 50);
+    value = Math.max(value, 3);
+    grid_size = value;
+    initialise_main();
+    main.render();
+});
