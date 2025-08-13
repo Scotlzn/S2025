@@ -1,4 +1,4 @@
-import { generate_array_2D, get_random_int_in_range } from "./support.js";
+import { generate_array_2D, get_random_int_in_range, inBounds } from "./support.js";
 
 var restart_button = document.getElementById("restart_button");
 var bombs_ui = document.getElementById("ui_bombs");
@@ -24,6 +24,10 @@ class Main {
         this.TILE_SIZE = this.WIDTH / this.GRID_WIDTH;
         this.HALF_TILE_SIZE = this.TILE_SIZE * 0.5;
 
+        this.keys = {};
+        window.addEventListener('keydown', this.handleKeyDown.bind(this));
+        window.addEventListener('keyup', this.handleKeyUp.bind(this));
+
         this.grid = generate_array_2D(this.GRID_WIDTH, this.GRID_HEIGHT);
 
         this.ctx.imageSmoothingEnabled = false;
@@ -42,6 +46,14 @@ class Main {
 
         this.first_click = true;
         this.over = false;
+    }
+
+    handleKeyDown(event) {
+        this.keys[event.key] = true;
+    }
+
+    handleKeyUp(event) {
+        this.keys[event.key] = false;
     }
 
     format_time(secs) {
@@ -154,11 +166,41 @@ class Main {
             this.flood_fill(tileX, tileY);
         }
 
-        tile.opened = true;
+        // Chording
+        if (tile.opened) {
+            // Clicked on a number and holding shift
+            if (tile.number != 0 && this.keys["Shift"]) {
+                this.chord(tile);
+            }
+            return;
+        }
 
-        // Check for game won
+        tile.opened = true;
+        this.checkWin();
+    }
+
+    chord(tile) {
+        for (const [dx, dy] of this.DIRECTIONS8) {
+            const x = tile.position[0] + dx;
+            const y = tile.position[1] + dy;
+            if (!inBounds(x, y, this.GRID_WIDTH, this.GRID_HEIGHT)) continue;
+            const new_tile = this.grid[x][y];
+            if (new_tile.flagged) continue;
+            if (new_tile.bomb) {
+                this.over = true;
+                bombs_ui.textContent = 'You lose :(';
+                this.end();
+                break;
+            }
+            if (new_tile.opened) continue;
+            new_tile.opened = true;
+            this.checkWin();
+        }
+    }
+
+    checkWin() {
         const not_bombs = this.grid.flat().filter(tile => !tile.bomb)
-        if (not_bombs.every(tile => tile.opened === true)) {
+        if (not_bombs.every(tile => tile.opened == true)) {
             bombs_ui.textContent = 'You win!';
             this.end();
         }
@@ -220,6 +262,7 @@ class Main {
     }
 
     restart() {
+        this.BOUNDING_BOX = canvas.getBoundingClientRect();
         clearInterval(this.interval);
         this.seconds = 0;
         bombs_ui.textContent = `Flags: ${this.FLAGS}`;
