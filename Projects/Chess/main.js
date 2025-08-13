@@ -16,6 +16,7 @@ var image_button = document.getElementById("image_button");
 var valid_button = document.getElementById("valid_button");
 var play_button = document.getElementById("play_button");
 var coord_button = document.getElementById("coord_button");
+var endless_button = document.getElementById("simulate_button");
 
 const move_sound = new Audio('./audio/move.mp3');
 const capture_sound = new Audio('./audio/capture.mp3');
@@ -86,6 +87,7 @@ class Main {
         this.checkmate = false;
         this.stalemate = false;
         this.flip_board = false;
+        this.lost_king = undefined;
 
         // 0 = Human, 1 = Random
         this.player1 = 0;
@@ -93,6 +95,7 @@ class Main {
 
         this.PLAY_INTERVAL_ID;
         this.playing = false;
+        this.endless = false;
         this.prevent_mouse_input = false;
         this.ai_vs_ai = false;
         this.human_vs_human = true;
@@ -148,7 +151,7 @@ class Main {
         // Find valid moves
         const piece = this.overlay.piece % 6 || 6;
         this.valid_moves = this.VMM.validMovesPiece(piece, this.mouse.tileX, this.mouse.tileY, true, false, false);
-
+        
         // Remove tile in place
         tile.piece = 0;
         tile.color = 0;
@@ -227,8 +230,10 @@ class Main {
             // ------------ Mate ------------
             // In check AND all the opponents pieces have no legal moves -> Mate
             if (opponent_stuck) {
+                this.lost_king = opponent_king;
                 this.checkmate = true;
                 turn_ui.textContent = "Checkmate!";
+                console.log("Checkmate!")
             }
         
         // ------------ Stalemate -----------
@@ -247,7 +252,6 @@ class Main {
         // Insufficient material
         if (insufficientMaterialCheck(my_pieces)) {
             this.insufficient_material[this.turn - 1] = true;
-            console.log(this.insufficient_material);
             if (this.turn == 2 && this.insufficient_material[0] == true) {
                 this.draw();
                 console.log("Stalemate by insufficient material");
@@ -407,6 +411,14 @@ class Main {
                 this.ctx.fillStyle = (renderX + renderY) % 2 === 0 ? "#ddd" : "#bbb";
                 this.ctx.fillRect(renderX * this.TILE_SIZE, renderY * this.TILE_SIZE, this.TILE_SIZE, this.TILE_SIZE);
 
+                // Checkmate UI
+                if (this.checkmate) {
+                    if (renderX == this.lost_king.x && renderY == this.lost_king.y) {
+                        this.ctx.fillStyle = "rgba(255, 0, 0, 0.6)";
+                        this.ctx.fillRect(renderX * this.TILE_SIZE, renderY * this.TILE_SIZE, this.TILE_SIZE, this.TILE_SIZE);
+                    }
+                }
+
                 // Coordinate labels
                 if (this.show_coordinates) {
                     this.ctx.font = `bold 30px sans-serif`;
@@ -502,7 +514,10 @@ class Main {
 
     play() {
         if (this.checkmate || this.stalemate) {
-            this.pause();
+            if (this.endless && this.ai_vs_ai) {
+                this.reset(false);
+                this.history = [this.loaded_FEN];
+            } else this.pause();
             return;
         }
         this.step();
@@ -557,6 +572,11 @@ valid_button.onclick = () => {
 coord_button.onclick = () => {
     main.show_coordinates = !main.show_coordinates;
     main.render();
+}
+
+endless_button.onclick = () => {
+    main.endless = !main.endless;
+    endless_button.textContent = (main.endless) ? "Endless: ON" : "Endless: OFF";
 }
 
 back_button.onclick = () => {
