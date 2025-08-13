@@ -9,6 +9,8 @@ canvas {
 }
 
 .grid {
+    margin-top: 10px;
+    margin-left: 10px;
     display: flex;
     align-items: flex-start;
     gap: 20px;
@@ -36,7 +38,7 @@ button {
 }
 
 .grid_size {
-    margin-top: -25px;
+    margin-left: 25px;
     display: flex;
     align-items: center;
     font-size: 18px;
@@ -50,6 +52,6 @@ button {
     box-sizing: border-box;
 }
 
-.grid_size p {
-    margin: 0 0 6px 0;
+.grid_size span {
+    color: white;
 }

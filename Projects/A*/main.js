@@ -402,8 +402,16 @@ play_button.onclick = function() {
 const input = document.getElementById("grid_input");
 input.addEventListener("input", () => {
     let value = parseInt(input.value);
+    
     if (isNaN(value)) return;
+    if (value < 5) {
+        value = 5;
+    } else if (value > 61) {
+        value = 61;
+    }
+
     main.restart();
+    maze_button.textContent = 'Maze: OFF';
     main = new Main(value);
     main.run();
     main.render();
