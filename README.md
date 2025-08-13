@@ -23,7 +23,7 @@
 > A* search algorithm visualiser with placeable objects and a maze generator using the Aldous-Broder Wilson hybrid algorithm. The start and end of the search are also changeable as is the size of the grid.
 > Project Finished: 03/08/2025
 
-### Project #4 - *Chess engine*
+### Project #5 - *Chess engine*
 
 > Chess engine completely in vanilla Javascript with the full chess rule set.
 > Project Finished: 13/08/2025

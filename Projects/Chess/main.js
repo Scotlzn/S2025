@@ -270,8 +270,16 @@ class Main {
             const y_level = (tile.color == 1) ? 7 : 0;
             const newX = (tile.x < 4) ? 2 : 5;
             const rookX = (tile.x < 4) ? 0 : 7;
-            this.grid[newX][y_level].piece = (tile.color == 1) ? 4 : 10;
-            this.grid[rookX][y_level].piece = 0;
+            const rook_new_position = this.grid[newX][y_level];
+            const rook_old_position = this.grid[rookX][y_level];
+
+            rook_new_position.piece = (tile.color == 1) ? 4 : 10;
+            rook_new_position.color = tile.color;
+            rook_new_position.moves = 1;
+
+            rook_old_position.piece = 0;
+            rook_old_position.color = 0;
+            rook_old_position.moves = 0;
         }
 
         // ----------- En passant ---------
@@ -279,6 +287,8 @@ class Main {
             const new_tile_direction = (tile.color == 1) ? -1 : 1;
             if (this.VMM.en_passant_tile.x == tile.x && (this.VMM.en_passant_tile.y + new_tile_direction) == tile.y) {
                 this.VMM.en_passant_tile.piece = 0;
+                this.VMM.en_passant_tile.color = 0;
+                this.VMM.en_passant_tile.moves = 0;
                 isCapture = true;
             }
         }
