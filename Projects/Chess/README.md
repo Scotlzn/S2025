@@ -3,7 +3,7 @@
 > Chess engine made in vanilla Javascript without using any guides or help, because I think it's more fun that way.
 > This project was a great challenge and a good learning experience, so I encourage everyone to try it!
 >
-> ![hippo](https://media2.giphy.com/media/v1Y2lkPTc5MGI3NjExa2ptOWZvNG5qcWo2c3F4ZjEzcDM0ZjBhd29sdm5oN2NwaTljeHZqMCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/8tpQbZLMqcljHsJn6S/giphy.gif)
+>![til](./assets/chess.gif)
 >
 > Engine features:
 >
