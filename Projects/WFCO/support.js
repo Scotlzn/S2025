@@ -24,3 +24,12 @@ export function createArray2D(width, height) {
     }
     return output;
 }
+
+export function countBits(n) {
+    let count = 0;
+    while (n) {
+        n &= n - 1;
+        count++;
+    }
+    return count;
+}

@@ -1,3 +1,5 @@
+import AdjacenciesManager from "./adjacencies.js";
+
 export default class TileManager {
     constructor() {
         this.source_canvas = document.getElementById("canvas2");
@@ -5,20 +7,29 @@ export default class TileManager {
         this.tile_canvas = document.getElementById("canvas3");
         this.tile_ctx = this.tile_canvas.getContext('2d');
 
-        this.TILE_SIZE = 3;
-        
+        this.tile_text = document.getElementById("tiles_generated")
+        this.source_text = document.getElementById("source_size");
+
+        this.TILE_SIZE = 3; // Has to be odd
         this.color_data = [];
         this.colors = {};
-        this.displayTiles = [];
+
+        this.uniqueTiles = 0;
+        this.frequencies = new Map();
+
+        // Both non-duplicate maps
+        this.indexToTile = new Map();
+        this.tileToIndex = new Map();
+
+        this.displayTiles; // Uint32Array of indices only 
+        this.tileCentres; // Uint32Array of duplicate single pixels
 
         this.mainRunFunction;
         this.image;
-        this.tiles;
     }
 
-    generateDisplayTile(topleftX, topleftY) {
+    generateTile(topleftX, topleftY, imageWidth, imageHeight) {
         // Each pixel is the top-left of its own tile
-        const imageWidth = this.image.width, imageHeight = this.image.height;
         let tile = new Uint8ClampedArray(4 * this.TILE_SIZE * this.TILE_SIZE);
         for (let tileY = 0; tileY < this.TILE_SIZE; tileY++) {
             for (let tileX = 0; tileX < this.TILE_SIZE; tileX++) {
@@ -29,7 +40,7 @@ export default class TileManager {
                 const colorIndex = (overlappedY * this.image.width + overlappedX) * 4;
                 const red = this.color_data[colorIndex];
                 const green = this.color_data[colorIndex + 1];
-                const blue = this.color_data[colorIndex + 2];
+                const blue = this.color_data[colorIndex + 2]; 
 
                 // Add pixel to the current tile buffer
                 const tileIndex = (tileY * this.TILE_SIZE + tileX) * 4;
@@ -39,10 +50,24 @@ export default class TileManager {
                 tile[tileIndex + 3] = 255; // Always opaque
             }
         }
-        return tile;
+        // Tile frequency
+        const tile_key = Array.from(tile).join(',');
+        const isUnique = this.frequencies.get(tile_key);
+        this.frequencies.set(tile_key, (isUnique ?? 0) + 1);
+
+        if (isUnique == undefined) {
+            this.indexToTile.set(this.indexToTile.size, tile);
+            this.tileToIndex.set(tile_key, this.tileToIndex.size);
+        }
+
+        // Add to indicies for rendering
+        const displayIndex = (topleftY * imageWidth) + topleftX;
+        this.displayTiles[displayIndex] = this.tileToIndex.get(tile_key);
     }
     
-    generateTiles() {      
+    generateTiles() {
+        const imageWidth = this.image.width, imageHeight = this.image.height;
+
         // Create a temporary canvas to draw the image on
         const temp_canvas = document.createElement("canvas");
         const temp_ctx = temp_canvas.getContext('2d');
@@ -57,7 +82,7 @@ export default class TileManager {
         // Calculate size of complete tile buffer (in bytes)
         const totalTiles = this.image.width * this.image.height;
         const byteTileSize = this.TILE_SIZE * this.TILE_SIZE * 4; // 4 bytes (r,g,b,a)
-        this.tiles = new Uint8ClampedArray(totalTiles * byteTileSize); 
+        this.tileCentres = new Uint8ClampedArray(totalTiles * 4); // 4 bytes (r,g,b,a)
 
         // Loop through each pixel to find all the colors in the source image
         this.colors = {};
@@ -76,23 +101,40 @@ export default class TileManager {
         }
 
         // Loop through each pixel to generate the tiles
+        this.displayTiles = new Uint32Array(totalTiles);
         for (let y = 0; y < temp_canvas.height; y++) {
             for (let x = 0; x < temp_canvas.width; x++) {
-                const tile = this.generateDisplayTile(x, y);
-                const index = (y * temp_canvas.width) + x;
-                const offset = index * byteTileSize;
-                this.tiles.set(tile, offset);
+
+                // Generate tile data using this pixel as the top-left
+                this.generateTile(x, y, imageWidth, imageHeight);
+
+                // Find position of the tile's centre pixel (with overlapping)
+                const centreX = (x + Math.floor(this.TILE_SIZE * 0.5)) % imageWidth;
+                const centreY = (y + Math.floor(this.TILE_SIZE * 0.5)) % imageHeight;
+
+                // Add centre pixel to main tile buffer for main rendering
+                const tileCentreIndex = (y * imageWidth + x) * 4;
+                const colorCentreIndex = (centreY * imageWidth + centreX) * 4;
+                this.tileCentres[tileCentreIndex] = this.color_data[colorCentreIndex];
+                this.tileCentres[tileCentreIndex + 1] = this.color_data[colorCentreIndex + 1];
+                this.tileCentres[tileCentreIndex + 2] = this.color_data[colorCentreIndex + 2];
+                this.tileCentres[tileCentreIndex + 3] = 255; // Always opaque
             }
         }
+        this.uniqueTiles = this.frequencies.size;
 
-        console.log(this.tiles);
-        console.log(this.color_data);
+        console.log(this.tileCentres);
+
+        // Created here so I can access all the arrays here
+        const adjacenciesManager = new AdjacenciesManager(this);
+        adjacenciesManager.precompute();
+        console.log(adjacenciesManager.allAdjacencyData);
 
         this.setupTilesImage(byteTileSize);
         this.mainRunFunction();
     }
 
-    setupTilesImage(bytesPerTile) {
+    setupTilesImage() {
         // Account for non-square images and scale
         const aspectRatio = this.image.width / this.image.height;
         if (aspectRatio >= 1) { // Wide image
@@ -109,19 +151,19 @@ export default class TileManager {
         const perfectY = Math.round(this.tile_canvas.height / tileSize) * tileSize;
         this.tile_canvas.width = perfectX;
         this.tile_canvas.height = perfectY;
+        this.tile_text.textContent += ` ${numberTilesX * numberTilesY} (${this.uniqueTiles})`;
 
         // Make a temporary canvas to paste the pixel data onto
         const temp_canvas = document.createElement("canvas");
         const temp_ctx = temp_canvas.getContext('2d');
         temp_canvas.width = numberTilesX * this.TILE_SIZE;
         temp_canvas.height = numberTilesY * this.TILE_SIZE;
-
+        
         // Draw pixel data of each tile onto the temporary canvas
         for (let y = 0; y < numberTilesY; y++) {
             for (let x = 0; x < numberTilesX; x++) {
-                const index = (y * numberTilesX) + x;
-                const offset = index * bytesPerTile;
-                const tileData = this.tiles.subarray(offset, offset + bytesPerTile);
+                const index = this.displayTiles[y * numberTilesX + x];
+                const tileData = this.indexToTile.get(index);
                 const imageData = new ImageData(tileData, this.TILE_SIZE, this.TILE_SIZE);
                 temp_ctx.putImageData(imageData, x * this.TILE_SIZE, y * this.TILE_SIZE)
             }
@@ -147,6 +189,7 @@ export default class TileManager {
     }
 
     setupSourceImage() {
+        this.source_text.textContent += ` ${this.image.width}x${this.image.height}`;
         // Account for non-square images and scale accordingly
         const aspectRatio = this.image.width / this.image.height;
         if (aspectRatio >= 1) {     // Wide image
@@ -155,8 +198,8 @@ export default class TileManager {
             this.source_canvas.height = Math.round(this.source_canvas.width / aspectRatio);
         }
 
-        const perfectWidth= Math.round(this.source_canvas.width / this.image.width) * this.image.width;
-        const perfectHeight= Math.round(this.source_canvas.height / this.image.height) * this.image.height;
+        const perfectWidth = Math.round(this.source_canvas.width / this.image.width) * this.image.width;
+        const perfectHeight = Math.round(this.source_canvas.height / this.image.height) * this.image.height;
         this.source_canvas.width = perfectWidth;
         this.source_canvas.height = perfectHeight;
 
