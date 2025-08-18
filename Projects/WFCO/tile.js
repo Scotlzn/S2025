@@ -1,7 +1,9 @@
 import AdjacenciesManager from "./adjacencies.js";
 
 export default class TileManager {
-    constructor() {
+    constructor(main) {
+        this.main = main;
+
         this.source_canvas = document.getElementById("canvas2");
         this.source_ctx = this.source_canvas.getContext('2d');
         this.tile_canvas = document.getElementById("canvas3");
@@ -12,17 +14,17 @@ export default class TileManager {
 
         this.TILE_SIZE = 3; // Has to be odd
         this.color_data = [];
-        this.colors = {};
 
         this.uniqueTiles = 0;
         this.frequencies = new Map();
 
-        // Both non-duplicate maps
+        // All non-duplicate maps
         this.indexToTile = new Map();
+        this.indexToFrequency = new Map();
         this.tileToIndex = new Map();
 
         this.displayTiles; // Uint32Array of indices only 
-        this.tileCentres; // Uint32Array of duplicate single pixels
+        this.tileCentres; // Uint32Array of non-duplicate single pixels
 
         this.mainRunFunction;
         this.image;
@@ -59,6 +61,8 @@ export default class TileManager {
             this.indexToTile.set(this.indexToTile.size, tile);
             this.tileToIndex.set(tile_key, this.tileToIndex.size);
         }
+        const currentIndex = this.tileToIndex.get(tile_key);
+        this.indexToFrequency.set(currentIndex, (this.indexToFrequency.get(currentIndex) ?? 0) + 1);
 
         // Add to indicies for rendering
         const displayIndex = (topleftY * imageWidth) + topleftX;
@@ -79,26 +83,8 @@ export default class TileManager {
         const imageData = temp_ctx.getImageData(0, 0, temp_canvas.width, temp_canvas.height);
         this.color_data = imageData.data; // returns Uint8ClampedArray [r, g, b, a, r, g, b, a, ...]
 
-        // Calculate size of complete tile buffer (in bytes)
         const totalTiles = this.image.width * this.image.height;
-        const byteTileSize = this.TILE_SIZE * this.TILE_SIZE * 4; // 4 bytes (r,g,b,a)
-        this.tileCentres = new Uint8ClampedArray(totalTiles * 4); // 4 bytes (r,g,b,a)
-
-        // Loop through each pixel to find all the colors in the source image
-        this.colors = {};
-        for (let y = 0; y < temp_canvas.height; y++) {
-            for (let x = 0; x < temp_canvas.width; x++) {
-                const i = (y * temp_canvas.width + x) * 4;
-                const r = this.color_data[i];
-                const g = this.color_data[i + 1];
-                const b = this.color_data[i + 2];
-                const key = `${r},${g},${b}`;
-
-                if (!(key in this.colors)) {
-                    this.colors[key] = Object.keys(this.colors).length;
-                }
-            }
-        }
+        const byteTileSize = this.TILE_SIZE * this.TILE_SIZE * 4; // 4 bytes (r,g,b,a) 
 
         // Loop through each pixel to generate the tiles
         this.displayTiles = new Uint32Array(totalTiles);
@@ -107,34 +93,40 @@ export default class TileManager {
 
                 // Generate tile data using this pixel as the top-left
                 this.generateTile(x, y, imageWidth, imageHeight);
-
-                // Find position of the tile's centre pixel (with overlapping)
-                const centreX = (x + Math.floor(this.TILE_SIZE * 0.5)) % imageWidth;
-                const centreY = (y + Math.floor(this.TILE_SIZE * 0.5)) % imageHeight;
-
-                // Add centre pixel to main tile buffer for main rendering
-                const tileCentreIndex = (y * imageWidth + x) * 4;
-                const colorCentreIndex = (centreY * imageWidth + centreX) * 4;
-                this.tileCentres[tileCentreIndex] = this.color_data[colorCentreIndex];
-                this.tileCentres[tileCentreIndex + 1] = this.color_data[colorCentreIndex + 1];
-                this.tileCentres[tileCentreIndex + 2] = this.color_data[colorCentreIndex + 2];
-                this.tileCentres[tileCentreIndex + 3] = 255; // Always opaque
             }
         }
         this.uniqueTiles = this.frequencies.size;
 
-        console.log(this.tileCentres);
+        // Find position of the tile's centre pixel
+        const centre = Math.floor(this.TILE_SIZE * 0.5);
+        const centreIndex = (centre * this.TILE_SIZE + centre);
+        this.tileCentres = new Uint8ClampedArray(this.uniqueTiles * 4); // 4 bytes (r,g,b,a)
+
+        // Loop through the unique tiles to find the centre pixel data for rendering
+        for (let tile = 0; tile < this.uniqueTiles; tile++) {
+
+            const tileCentreIndex = tile * 4;
+            const tileData = this.indexToTile.get(tile);
+
+            // // Add centre pixel to main pixel buffer for main rendering
+            this.tileCentres[tileCentreIndex] = tileData[centreIndex];
+            this.tileCentres[tileCentreIndex + 1] = tileData[centreIndex + 1];
+            this.tileCentres[tileCentreIndex + 2] = tileData[centreIndex + 2];
+            this.tileCentres[tileCentreIndex + 3] = 255; // Always opaque
+        }
 
         // Created here so I can access all the arrays here
-        const adjacenciesManager = new AdjacenciesManager(this);
-        adjacenciesManager.precompute();
-        console.log(adjacenciesManager.allAdjacencyData);
+        this.main.adjacenciesManager = new AdjacenciesManager(this);
+        this.main.adjacenciesManager.precompute();
 
         this.setupTilesImage(byteTileSize);
         this.mainRunFunction();
     }
 
     setupTilesImage() {
+        this.tile_canvas.width = 800;
+        this.tile_canvas.height = 800;
+
         // Account for non-square images and scale
         const aspectRatio = this.image.width / this.image.height;
         if (aspectRatio >= 1) { // Wide image
@@ -151,6 +143,8 @@ export default class TileManager {
         const perfectY = Math.round(this.tile_canvas.height / tileSize) * tileSize;
         this.tile_canvas.width = perfectX;
         this.tile_canvas.height = perfectY;
+
+        this.tile_text.textContent = "Tiles generated:";
         this.tile_text.textContent += ` ${numberTilesX * numberTilesY} (${this.uniqueTiles})`;
 
         // Make a temporary canvas to paste the pixel data onto
@@ -189,7 +183,12 @@ export default class TileManager {
     }
 
     setupSourceImage() {
+        this.source_text.textContent = "Source image:";
         this.source_text.textContent += ` ${this.image.width}x${this.image.height}`;
+
+        this.source_canvas.width = 400;
+        this.source_canvas.height = 400;
+
         // Account for non-square images and scale accordingly
         const aspectRatio = this.image.width / this.image.height;
         if (aspectRatio >= 1) {     // Wide image
@@ -210,9 +209,9 @@ export default class TileManager {
         this.source_ctx.drawImage(this.image, 0, 0);
     }
     
-    loadImage() {
+    loadImage(imageName) {
         const img = new Image();
-        img.src = './assets/Flowers.png';
+        img.src = `./assets/${imageName}.png`;
         img.onload = () => {
             this.image = img;
             this.setupSourceImage();

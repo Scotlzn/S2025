@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>WFCO Image Editor</title>
+        <link rel="stylesheet" href="../navbar.css">
+        <link rel="stylesheet" href="./editor.css">
+        <script defer src="./editor.js" type="module"></script>
+    </head>
+    <body>
+        <div class="navbar">
+            <a href="../index.html">WFCO Image Editor</a>
+            <button class="clickable" id="drawButton">Draw</button>
+            <button class="clickable" id="rubberButton">Rubber</button>
+            <button class="clickable" id="bucketButton">Bucket</button>
+            <button id="clearButton">Clear</button>
+            <button id="exportButton">Export</button>
+            <div class="dropdown">
+                <button class="dropbtn">
+                    <span>
+                        Options
+                        <i class="fa fa-caret-down"></i>
+                    </span>
+                </button>
+                <div class="dropdown-content" id="images">
+                    <button id="ratioButton">Maintain ratio</button>
+                    <button>Paste image</button>
+                    <button>Import image</button>
+                </div>
+            </div>
+            <div class="gridWidth">
+                <span>Width:</span> <input type="number" min="3" max="50" value="8" id="widthInput">
+            </div>
+            <div class="gridHeight">
+                <span>Height:</span> <input type="number" min="3" max="50" value="8" id="heightInput">
+            </div>
+        </div>
+        <div class="editor">
+            <div class="canvasDiv">
+                <canvas id="imageEditor" width="800" height="800" oncontextmenu="return false;">Canvas couldn't load!</canvas>
+            </div>
+            <div class="controlsDiv">
+                <div class="colorsDiv" id="colorDiv">
+                    <div class="color" style="background: black;" data-color=#000000></div>
+                    <div class="color" style="background: white;" data-color=#FFFFFF></div>
+                </div>
+                <div class="colorButtons">
+                    <input id="addColorInput" type="color">
+                    <button id="addColorButton">Add color</button>
+                    <button id="clearColorButton">Clear</button>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

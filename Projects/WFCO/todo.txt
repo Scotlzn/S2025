@@ -1,0 +1,21 @@
+# TODO
+    - Image editor
+
+# Editor
+    - Non square image sizes, use aspect ratio thing
+    - Selected color indicator
+    - Add more default colors
+    - Import image from clipboard?
+    - Import image from pc
+    - Maintain ratio / Ignore ratio
+    - Left click auto selects rubber
+    - Right click auto selects draw
+
+# Info
+    - Max number of tiles i can support is 65535 (16 bit int)
+
+# Future
+    - Rotation button
+    - Set color for contradiction tile
+    - Rotated tiles
+    - Changable grid size (maintain aspect ratio toggle)

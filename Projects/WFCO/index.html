@@ -1,16 +1,88 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Wave Function Collapse Overlap</title>
+        <title>WFC Overlapping Model</title>
         <link rel="stylesheet" href="./style.css">
+        <link rel="stylesheet" href="./navbar.css">
         <script defer src="main.js" type="module"></script>
     </head>
     <body>
-        <div>
+        <div class="navbar">
+            <a href="../../main.html">WFC Overlapping Model</a>
+            <div class="dropdown">
+                <button class="dropbtn">
+                    <span>
+                        Flowers
+                        <i class="fa fa-caret-down"></i>
+                    </span>
+                </button>
+                <div class="dropdown-content" id="images">
+                    <button>Custom 1</button>
+                    <hr>
+                    <button>Angular</button>
+                    <button>Bricks</button>
+                    <button>Cat</button>
+                    <button>City</button>
+                    <button>ColoredCity</button>
+                    <button>Disk</button>
+                    <button>Dungeon</button>
+                    <button>Finland</button>
+                    <button>Flowers</button>
+                    <button>Hogs</button>
+                    <button>Knot</button>
+                    <button>Lake</button>
+                    <button>Link</button>
+                    <button>Logo</button>
+                    <button>MagicOffice</button>
+                    <button>Mazelike</button>
+                    <button>Mountains</button>
+                    <button>Office</button>
+                    <button>Office2</button>
+                    <button>Paths</button>
+                    <button>Platformer</button>
+                    <button>RedDot</button>
+                    <button>RedMaze</button>
+                    <button>Rooms</button>
+                    <button>Sand</button>
+                    <button>Sewers</button>
+                    <button>SimpleKnot</button>
+                    <button>SimpleWall</button>
+                    <button>Skew2</button>
+                    <button>Skyline</button>
+                    <button>SmileCity</button>
+                    <button>Spirals</button>
+                    <button>Town</button>
+                    <button>Triforce</button>
+                    <button>Village</button>
+                    <button>WalledDot</button>
+                    <button>Water</button>
+                    <button>Text</button>
+                    <button>Font</button>
+                </div>
+            </div>
+            <button id="playButton">Play</button>
+            <button id="stepButton">Step</button>
+            <button id="resetButton">Reset</button>
+            <a href="./editor/editor.html">Image editor</a>
+            <div class="dropdown">
+                <button class="dropbtn">
+                    <span>
+                        Options
+                        <i class="fa fa-caret-down"></i>
+                    </span>
+                </button>
+                <div class="dropdown-content" id="images">
+                    <button id="rotationButton">Enable rotations</button>
+                    <button id="entropyButton">Show entropy: OFF</button>
+                    <button id="gridButton">Show grid: OFF</button>
+                </div>
+            </div>
+        </div>
+        <div class="mainCanvas">
             <canvas width="800" height="800" id="canvas" oncontextmenu="return false;">Canvas failed to load!</canvas>
         </div>
         <div id="tile_info">
-            <div>
+            <div class="tileDisplay">
                 <h2 id="tiles_generated">Tiles generated:</h2>
                 <canvas width="800" height="800" id="canvas3" oncontextmenu="return false;">Canvas failed to load!</canvas>
             </div>

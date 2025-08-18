@@ -16,21 +16,9 @@ export default class AdjacenciesManager {
         this.numTiles = this.tm.uniqueTiles; 
         this.bitsPerTile = this.TILE_SIZE * this.TILE_SIZE * 4;
         this.bitsetSize = Math.ceil(this.numTiles / 32);
+        this.unusedBits = (this.bitsetSize * 32) - this.numTiles
 
         this.allAdjacencyData = new Uint32Array(this.numTiles * 4 * this.bitsetSize); // 4 directions
-    }
-
-    generateFullBitset() {
-        const bitset = new Uint32Array(this.bitsetSize);
-        bitset.fill(0xFFFFFFFF); // This is the 32 bit int limit
-        return bitset;
-    }
-
-    applyBitsetContraints(tileBitset, newBitset) {
-        // Only keeps common elements between both bitsets in the tileBitset
-        for (let i = 0; i < tileBitset.length; i++) {
-            tileBitset[i] &= newBitset[i];
-        }
     }
 
     compareDirections(firstTileData, secondTileData, direction) {

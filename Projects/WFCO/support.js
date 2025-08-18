@@ -1,6 +1,3 @@
-export const DIRECTION4 = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-export const DIRECTION8 = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
-
 export function getRandomIntInRange(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -9,27 +6,67 @@ export function rectangleCollision(a, b) {
     return (a[0] < b[0] + b[2] && a[0] + a[2] > b[0] && a[1] < b[1] + b[3] && a[1] + a[3] > b[1]);
 }
 
-export function inBounds(x, y, maxX, maxY) {
-    return ((x >= 0) && (x < maxX) && (y >= 0) && (y < maxY));
+export function inBounds(position, originalX, maxX, length) {
+    if (position < 0 || position >= length) return false;
+    const x = position % maxX;
+    return Math.abs(x - originalX) <= 1;     // horizontal wrap check
 }
 
-export function createArray2D(width, height) {
-    const output = [];
-    for (let x = 0; x < width; x++) {
-        const new_line = [];
-        for (let y = 0; y < height; y++) {
-            new_line[y] = 0;
+export function forEachSetBit(bitset, cb) {
+    for (let w = 0; w < bitset.length; w++) {
+        let word = bitset[w] >>> 0;
+        while (word) {
+            const lsb = word & -word;
+            const bit = (w << 5) + (31 - Math.clz32(lsb));
+            cb(bit);
+            word ^= lsb;
         }
-        output[x] = new_line;
     }
-    return output;
 }
 
-export function countBits(n) {
-    let count = 0;
-    while (n) {
-        n &= n - 1;
-        count++;
+export function isBitsetEmpty(bs) {
+    for (let i = 0; i < bs.length; i++) if (bs[i] !== 0) return false;
+    return true;
+}
+
+// Only keeps common elements between both bitsets in the tileBitset
+export function applyBitsetContraints(tileBitset, newBitset) {
+    let hasChanged = false;
+    for (let i = 0; i < tileBitset.length; i++) {
+        const oldWord = tileBitset[i];
+        tileBitset[i] &= newBitset[i];
+        if (tileBitset[i] != oldWord) {
+            hasChanged = true;
+        }
     }
-    return count;
+    return hasChanged;
+}
+
+export function makeSingletonBitset(bitsetSize, tileIndex) {
+        const bitset = new Uint32Array(bitsetSize);
+        const word = Math.floor(tileIndex / 32);
+        const bit = tileIndex % 32;
+        bitset[word] = 1 << bit;
+        return bitset;
+    }
+
+export function getRandomMinimumElement(array) {
+    let minValue = Infinity;
+    const minIndexes = [];
+
+    for (let i = 0; i < array.length; i++) {
+        const e = array[i];
+        if (e == 0) continue;
+
+        if (e < minValue) {
+            minValue = e;
+            minIndexes.length = 0;
+            minIndexes.push(i);
+        } else if (e == minValue) {
+            minIndexes.push(i);
+        }
+    }
+    if (minIndexes.length == 0) return undefined;
+
+    return minIndexes[getRandomIntInRange(0, minIndexes.length - 1)];
 }
